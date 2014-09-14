@@ -47,24 +47,22 @@ Shape.prototype.draw = function(canvas, matrices) {
     var rctx = canvas.rctx;
     var program = canvas.program;
     var deferred = this.q.defer();
-    //Loop shape buffers
-    this.q.all(_.invoke(this.buffers, "rebind", canvas, matrices)).then((function(shape) {
-        return function() {
-            console.log("Ready to draw");
-            //Disable unused vertex attributes
-            _.each(program.vertexAttributes, function(i, vertexAttributeType) {
-                if(!rctx.getVertexAttrib(i, rctx.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING)) {
-                    console.log("Attribute %d is unused, disabling", i);
-                    rctx.disableVertexAttribArray(i);
-                }
-            });
-            //Set matrix uniforms
-            mat4.setMatrixUniforms(rctx, program, matrices);
-            //Draw arrays
-            rctx.drawArrays(rctx.TRIANGLE_STRIP, 0, shape.vertices.length);
-            deferred.resolve(shape);
-        };
-    })(this));
+    var key, i;
+    for (key in this.buffers) {
+        this.buffers[key].rebind(canvas, matrices);
+    }
+    i = 0;
+    for (key in program.vertexAttributes) {
+        if(!rctx.getVertexAttrib(i, rctx.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING)) {
+            console.log("Attribute %d is unused, disabling", i);
+            rctx.disableVertexAttribArray(i);
+        }
+        i++;
+    }
+    mat4.setMatrixUniforms(rctx, program, matrices);
+    rctx.drawArrays(rctx.TRIANGLE_STRIP, 0, this.vertices.length);
+
+    deferred.resolve(this);
     return deferred.promise;
 };
 
