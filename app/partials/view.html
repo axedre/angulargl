@@ -1,0 +1,11 @@
+<div class="well container">
+    <button class="btn btn-success hidden" ng-click="initCanvas()">Click here</button>
+    <div>
+        <button class="btn btn-default" ng-click="play = !play">
+            <span class="glyphicon" ng-class="'glyphicon-'+(play && 'pause' || 'play')"></span>
+        </button>
+    </div>
+    <div>
+        <canvas id="canvas"></canvas>
+    </div>
+</div>
