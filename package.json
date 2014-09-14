@@ -9,7 +9,7 @@
         "url": "http://axedre.net"
     },
     "scripts": {
-        "start": "node server.js & compass watch app/"
+        "start": "node server.js"
     },
     "engines": {
         "node": ">= 0.6.0",
