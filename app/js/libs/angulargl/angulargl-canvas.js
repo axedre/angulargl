@@ -79,17 +79,19 @@ Canvas.prototype.render = function(scope) {
             console.timeEnd("Rendering");
         });*/
         //2nd approach: call .bindBuffers() on all objects, call .draw() on all objects (2 separate loops)
-        _.invoke(canvas.objects, "bindBuffers", canvas.rctx);
-        async.eachSeries(canvas.objects, function(object, cb) {
-            console.groupCollapsed("Drawing object %O", object);
-            object.draw(canvas, matrices).then(function(object) {
-                console.log("Object drawn");
-                console.groupEnd();
-                cb();
-            });
-        }, function() {
-            console.timeEnd("Rendering");
-        });
+        // _.invoke(canvas.objects, "bindBuffers", canvas.rctx);
+        for (
+            var i = 0, tmpobj = canvas.objects[0];
+            i < canvas.objects.length;
+            i++, tmpobj = canvas.objects[i]
+        ) {
+            console.groupCollapsed("Drawing object %O", tmpobj);
+            tmpobj.bindBuffers(canvas.rctx);
+            tmpobj.draw(canvas, matrices);
+            console.log("Object drawn");
+            console.groupEnd();
+        }
+        console.timeEnd("Rendering");
     };
     var compiledShaders = _.pluck(this.shaders, "compiled");
     if(_.every(compiledShaders, function(compiledShader) {
