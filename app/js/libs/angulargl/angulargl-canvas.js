@@ -18,7 +18,7 @@ function Canvas(elementId, options) {
 Canvas.prototype.init = function() {
     var options;
     try {
-        options = {alpha: false, premultipliedAlpha: false};
+        options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true};
         this.rctx = this.HTMLCanvas.getContext("experimental-webgl", options);
         this.rctx.viewportWidth = this.width;
         this.rctx.viewportHeight = this.height;
@@ -28,15 +28,6 @@ Canvas.prototype.init = function() {
     }
 };
 Canvas.prototype.addObjects = function() {
-    /*
-    _.each(_.flatten(arguments), function(o) {
-        if(o.type === "solid" && !o.elemArray) {
-            [].push.apply(this.objects, o.faces);
-        } else {
-            this.objects.push(o);
-        }
-    }, this);
-    */
     _.each(_.flatten(arguments), function(object) {
         this.objects.push(object);
     }, this);
@@ -67,18 +58,6 @@ Canvas.prototype.render = function(scope) {
         canvas.initProgram();
         //Clear canvas, then bind buffers for and draw each object
         var matrices = canvas.clear(scope);
-        //1st approach: loop objects, call .bindBuffers() and .draw() on each one
-        /*async.eachSeries(canvas.objects, function(object, cb) {
-            console.groupCollapsed("Drawing object %O", object);
-            object.bindBuffers(canvas.rctx).draw(canvas, matrices).then(function(object) {
-                console.log("Object drawn");
-                console.groupEnd();
-                cb();
-            });
-        }, function() {
-            console.timeEnd("Rendering");
-        });*/
-        //2nd approach: call .bindBuffers() on all objects, call .draw() on all objects (2 separate loops)
         _.invoke(canvas.objects, "bindBuffers", canvas.rctx);
         async.eachSeries(canvas.objects, function(object, cb) {
             console.groupCollapsed("Drawing object %O", object);
