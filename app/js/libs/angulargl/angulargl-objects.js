@@ -46,24 +46,17 @@ Shape.prototype.constructor = Shape;
 Shape.prototype.draw = function(canvas, matrices) {
     var rctx = canvas.rctx;
     var program = canvas.program;
-    var deferred = this.q.defer();
-    var key, i;
-    for (key in this.buffers) {
+    for (var key in this.buffers) {
         this.buffers[key].rebind(canvas, matrices);
     }
-    i = 0;
-    for (key in program.vertexAttributes) {
+    for (var i=0; i < _.keys(program.vertexAttributes).length; i++) {
         if(!rctx.getVertexAttrib(i, rctx.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING)) {
             console.log("Attribute %d is unused, disabling", i);
             rctx.disableVertexAttribArray(i);
         }
-        i++;
     }
     mat4.setMatrixUniforms(rctx, program, matrices);
     rctx.drawArrays(rctx.TRIANGLE_STRIP, 0, this.vertices.length);
-
-    deferred.resolve(this);
-    return deferred.promise;
 };
 
 function Solid(faces, elementArray) {

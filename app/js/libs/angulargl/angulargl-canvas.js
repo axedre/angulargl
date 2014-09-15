@@ -67,27 +67,11 @@ Canvas.prototype.render = function(scope) {
         canvas.initProgram();
         //Clear canvas, then bind buffers for and draw each object
         var matrices = canvas.clear(scope);
-        //1st approach: loop objects, call .bindBuffers() and .draw() on each one
-        /*async.eachSeries(canvas.objects, function(object, cb) {
+        //Loop objects, call .bindBuffers() and .draw() on each one
+        for (var i = 0; i < canvas.objects.length; i++) {
+            var object = canvas.objects[i];
             console.groupCollapsed("Drawing object %O", object);
-            object.bindBuffers(canvas.rctx).draw(canvas, matrices).then(function(object) {
-                console.log("Object drawn");
-                console.groupEnd();
-                cb();
-            });
-        }, function() {
-            console.timeEnd("Rendering");
-        });*/
-        //2nd approach: call .bindBuffers() on all objects, call .draw() on all objects (2 separate loops)
-        // _.invoke(canvas.objects, "bindBuffers", canvas.rctx);
-        for (
-            var i = 0, tmpobj = canvas.objects[0];
-            i < canvas.objects.length;
-            i++, tmpobj = canvas.objects[i]
-        ) {
-            console.groupCollapsed("Drawing object %O", tmpobj);
-            tmpobj.bindBuffers(canvas.rctx);
-            tmpobj.draw(canvas, matrices);
+            object.bindBuffers(canvas.rctx).draw(canvas, matrices);
             console.log("Object drawn");
             console.groupEnd();
         }
