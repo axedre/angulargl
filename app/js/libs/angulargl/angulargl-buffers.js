@@ -20,7 +20,7 @@ function Buffer(data) {
 }
 Buffer.prototype.bind = function(rctx) {
     if(this.bound) return;
-    console.log("Binding buffer");
+    console.log("Binding %s buffer", this.type);
     this.webGLBuffer = rctx.createBuffer();
     if(this instanceof ElementBuffer) {
         rctx.bindBuffer(rctx.ELEMENT_ARRAY_BUFFER, this.webGLBuffer);
@@ -52,6 +52,7 @@ Buffer.prototype.rebind = function(canvas, matrices) {
     if(this.type === "texture") {
         this.texture.promise.then((function(buffer) {
             return function(texture) {
+                console.log("TextureBuffer resolved");
                 rctx.activeTexture(rctx.TEXTURE0);
                 rctx.bindTexture(rctx.TEXTURE_2D, texture);
                 rctx.uniform1i(program.samplerUniform, 0);
@@ -64,6 +65,7 @@ Buffer.prototype.rebind = function(canvas, matrices) {
             }
         })(this));
     } else {
+        console.log("%sBuffer resolved", _(this.type).capitalize());
         deferred.resolve(this);
     }
     return deferred.promise;
@@ -101,13 +103,21 @@ function TextureBuffer(texturePath, numVertices, factor) {
     this.image = new Image();
     this.path = texturePath;
     this.loadFn = function(rctx) {
+        var method = 1;
+        //Method n. 1 is the one illustrated on learningwebgl.com, lesson5, function handleLoadedTexture()
+        //Method n. 2 is the one illustrated on lesson "Using textures in WebGL", http://snipurl.com/299a1r3
+        //Neither work :(
         var texture = rctx.createTexture();
         rctx.bindTexture(rctx.TEXTURE_2D, texture);
-        //rctx.pixelStorei(rctx.UNPACK_FLIP_Y_WEBGL, true);
+        if(method === 1) {
+            rctx.pixelStorei(rctx.UNPACK_FLIP_Y_WEBGL, true);
+        }
         rctx.texImage2D(rctx.TEXTURE_2D, 0, rctx.RGBA, rctx.RGBA, rctx.UNSIGNED_BYTE, this.image);
-        rctx.texParameteri(rctx.TEXTURE_2D, rctx.TEXTURE_MAG_FILTER, /*rctx.NEAREST*/rctx.LINEAR);
-        rctx.texParameteri(rctx.TEXTURE_2D, rctx.TEXTURE_MIN_FILTER, /*rctx.NEAREST*/rctx.LINEAR_MIPMAP_NEAREST);
-        rctx.generateMipmap(rctx.TEXTURE_2D);
+        rctx.texParameteri(rctx.TEXTURE_2D, rctx.TEXTURE_MAG_FILTER, (method === 1)? rctx.NEAREST : rctx.LINEAR);
+        rctx.texParameteri(rctx.TEXTURE_2D, rctx.TEXTURE_MIN_FILTER, (method === 1)? rctx.NEAREST : rctx.LINEAR_MIPMAP_NEAREST);
+        if(method === 2) {
+            rctx.generateMipmap(rctx.TEXTURE_2D);
+        }
         rctx.bindTexture(rctx.TEXTURE_2D, null);
         return texture;
     }

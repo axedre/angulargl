@@ -60,7 +60,7 @@ Canvas.prototype.render = function(scope) {
         var matrices = canvas.clear(scope);
         _.invoke(canvas.objects, "bindBuffers", canvas.rctx);
         async.eachSeries(canvas.objects, function(object, cb) {
-            console.groupCollapsed("Drawing object %O", object);
+            console.group("Drawing object %O", object);
             object.draw(canvas, matrices).then(function(object) {
                 console.log("Object drawn");
                 console.groupEnd();

@@ -90,18 +90,17 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         {position: [0.5, 0.5]}
     ]).setTexture("js/libs/angulargl/textures/bricks1.png", 10);
     var triangle = [
-        new AngularGL.Shape([ //Another triangle
+        new AngularGL.Shape([ //A triangle
             {position: [-0.5, -0.5], color: [0.5, 0, 0]},
             {position: [0.5, -0.5], color: [0.5, 0, 0]},
             {position: [0, 0.5], color: [0.5, 0, 0]}
         ]),
-        new AngularGL.Shape([ //A triangle
+        new AngularGL.Shape([ //Another triangle
             {position: [1, -0.5], color: [0, 0, 0.5]},
             {position: [2, -0.5], color: [0, 0, 0.5]},
             {position: [1.5, 0.5], color: [0, 0, 0.5]}
-        ])/*.setTexture("js/libs/angulargl/textures/bricks1.png", 10)*/
+        ]).setTexture("js/libs/angulargl/textures/bricks1.png", 10)
     ];
-    //var shapes = [cubeWithElemArray, cubeNoElemArray, triangle];
 
     //1.
     var canvas = new AngularGL.Canvas("canvas", {
@@ -111,7 +110,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     });
     //canvas.addObjects(cubeWithElementArray);
     //canvas.addObjects(square);
-    canvas.addObjects(triangle);
+    canvas.addObjects(triangle[1]);
 
     //2.
     canvas.addShaders({

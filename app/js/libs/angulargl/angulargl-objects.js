@@ -19,6 +19,7 @@ CanvasObject.prototype.setTexture = function(texturePath, factor) {
         //TODO: create a single TextureBuffer for all faces
     } else {
         this.buffers.texture = new TextureBuffer(texturePath, this.vertices.length, factor);
+        delete this.buffers.color;
     }
     return this; //to allow chaining
 };
