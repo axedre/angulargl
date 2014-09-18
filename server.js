@@ -4,11 +4,13 @@ var https = require("https");
 var fs = require("fs");
 var _ = require("underscore");
 var async = require("async");
+//Include underscore.string
+_.mixin(require("underscore.string").exports());
 
 // configure app
 var app = express();
 var server = require("http").createServer(app);
-app.set("port", 4000);
+app.set("port", process.env.OPENSHIFT_NODEJS_PORT || 4000);
 app.use(express.static(__dirname + "/app"));
 app.use(express.static(__dirname + "/node_modules/async/lib"));
 app.use(function(req, res, next) {
@@ -24,6 +26,6 @@ app.use(function(req, res, next) {
     }
 });
 app.enable("trust proxy");
-server.listen(app.get("port"), function() {
+server.listen(app.get("port"), process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1", function() {
     console.log("Server started on port", app.get("port"));
 });

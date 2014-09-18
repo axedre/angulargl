@@ -8,7 +8,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     $scope.rx = 0;
     $scope.ry = 0;
     $scope.rz = 0;
-    
+
     var elementArray = [ //Element array
         0,  1,  2,      0,  2,  3,    //Front
         4,  5,  6,      4,  6,  7,    //Back
@@ -49,7 +49,8 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             {position: [-0.5,  0.5,  0.5], color: [1, 0, 1]},
             {position: [-0.5,  0.5, -0.5], color: [1, 0, 1]}
         ]
-    ], elementArray);//.setTexture("js/libs/angulargl/textures/bricks1.png");
+    ], elementArray);//.setColor([1, 1, 1]);
+//.setTexture("js/libs/angulargl/textures/bricks1.png");
     /*var cubeNoElemArray = new WebGL.Solid([ //Another cube, but no element array
         [ //Front face
             {position: [0, 0, 1], color: [0.92, 0.57, 0.22]},
@@ -99,7 +100,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             {position: [1, -0.5], color: [0, 0, 0.5]},
             {position: [2, -0.5], color: [0, 0, 0.5]},
             {position: [1.5, 0.5], color: [0, 0, 0.5]}
-        ]).setTexture("js/libs/angulargl/textures/bricks1.png", 10)
+        ])//.setTexture("js/libs/angulargl/textures/bricks1.png", 10)
     ];
 
     //1.
@@ -110,7 +111,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     });
     //canvas.addObjects(cubeWithElementArray);
     //canvas.addObjects(square);
-    canvas.addObjects(triangle[1]);
+    canvas.addObjects(cubeWithElementArray, triangle[1]);
 
     //2.
     canvas.addShaders({
@@ -122,16 +123,19 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     //3.
     //Do stuff
     function tick() {
-        if($scope.play) {
-            AngularGL.Utils.requestAnimFrame(tick);
-        }
-        canvas.render($scope);
+        //Update
         if($scope.ry >= 0) {
             $scope.inc = -1/2;
         } else if ($scope.ry <= -20) {
             $scope.inc = 1/2;
         }
         $scope.ry += $scope.inc;
+        //Render
+        canvas.render($scope);
+        //Request new frame
+        if($scope.play) {
+            AngularGL.Utils.requestAnimFrame(tick);
+        }
     }
     $scope.$watch("play", function(p) {
         if(p) {

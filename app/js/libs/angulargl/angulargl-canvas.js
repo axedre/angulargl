@@ -18,7 +18,7 @@ function Canvas(elementId, options) {
 Canvas.prototype.init = function() {
     var options;
     try {
-        options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true};
+        options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: false};
         this.rctx = this.HTMLCanvas.getContext("experimental-webgl", options);
         this.rctx.viewportWidth = this.width;
         this.rctx.viewportHeight = this.height;
@@ -56,13 +56,15 @@ Canvas.prototype.render = function(scope) {
         console.time("Rendering");
         //Initialize WebGL program (one time only)
         canvas.initProgram();
-        //Clear canvas, then bind buffers for and draw each object
+        //Clear canvas, then bind buffers for and draw each object (2 separate loops)
         var matrices = canvas.clear(scope);
+        console.group("bindBuffers");
         _.invoke(canvas.objects, "bindBuffers", canvas.rctx);
+        console.groupEnd();
         async.eachSeries(canvas.objects, function(object, cb) {
             console.group("Drawing object %O", object);
             object.draw(canvas, matrices).then(function(object) {
-                console.log("Object drawn");
+                console.info("Object drawn");
                 console.groupEnd();
                 cb();
             });
@@ -70,8 +72,7 @@ Canvas.prototype.render = function(scope) {
             console.timeEnd("Rendering");
         });
     };
-    var compiledShaders = _.pluck(this.shaders, "compiled");
-    if(_.every(compiledShaders, function(compiledShader) {
+    if(_.every(_.pluck(this.shaders, "compiled"), function(compiledShader) {
         return compiledShader instanceof WebGLShader;
     })) {
         _render(this);
@@ -124,7 +125,7 @@ Canvas.prototype.clear = function(scope) {
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
     rctx.viewport(0, 0, rctx.viewportWidth, rctx.viewportHeight);
-    rctx.clear(rctx.COLOR_BUFFER_BIT | rctx.DEPTH_BUFFER_BIT);
+    //rctx.clear(rctx.COLOR_BUFFER_BIT | rctx.DEPTH_BUFFER_BIT);
     mat4.perspective(45, rctx.viewportWidth / rctx.viewportHeight, 0.1, 100.0, pMatrix);
     mat4.identity(mvMatrix);
     mat4.translate(mvMatrix, [scope.x, scope.y, scope.z]);
@@ -133,10 +134,6 @@ Canvas.prototype.clear = function(scope) {
     mat4.rotate(mvMatrix, scope.rz/10, [0, 0, 1]);
     return [pMatrix, mvMatrix];
 };
-/*Canvas.prototype.draw = function(scope) {
-    //Loop objects
-    _.invoke(this.objects, "draw", this, this.clear(scope));
-};*/
 /* Event handling */
 Canvas.prototype.on = function() {
     var bind = (function(canvas) {

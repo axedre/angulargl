@@ -1,7 +1,7 @@
 {
-    "name": "phanes",
+    "name": "angulargl",
     "version": "0.1.0",
-    "description": "A starter project for angular js with some utility js libraries",
+    "description": "An AngularJS module for agile WebGL development",
     "license": "ISC",
     "author": {
         "name": "Andrea Aloi",
@@ -9,7 +9,7 @@
         "url": "http://axedre.net"
     },
     "scripts": {
-        "start": "node server.js"
+        "start": "node server.js & compass watch app/"
     },
     "engines": {
         "node": ">= 0.6.0",

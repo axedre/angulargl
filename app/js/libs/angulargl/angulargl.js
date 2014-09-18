@@ -1,10 +1,6 @@
 "use strict";
 
 angular.module("AngularGL", ["AngularGL.Canvas", "AngularGL.Objects", "AngularGL.Buffers", "AngularGL.Shaders"])
-/*.factory("Canvas", ["$scope", function(scope) {
-    Canvas.prototype.scope = scope;
-    return Canvas;
-}])*/
 .factory("Canvas", function() {return Canvas;})
 .factory("Shape", function() {return Shape;})
 .factory("Solid", function() {return Solid;})
@@ -23,7 +19,7 @@ function AngularGL(injector) {
 }
 
 var Utils = {
-    bufferTypes: ["position", "color"],
+    LOG_COLLAPSED: true,
     requestAnimFrame: function(cb) {
         (window.requestAnimationFrame ||
          window.webkitRequestAnimationFrame ||
@@ -91,3 +87,7 @@ _.mixin({
         return a;
     }
 });
+
+console.group = function() {
+    console[Utils.LOG_COLLAPSED? "groupCollapsed" : "group"].apply(console, arguments);
+}

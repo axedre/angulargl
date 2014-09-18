@@ -2,34 +2,36 @@
 
 angular.module("AngularGL.Buffers", []);
 
-function Buffer(data) {
+function Buffer(data, type) {
     this.data = data || [];
-    if(this instanceof PositionBuffer) {
-        this.type = "position";
-        this.itemSize = 3;
-    } else if(this instanceof ColorBuffer) {
-        this.type = "color";
-        this.itemSize = 4;
-    } else if(this instanceof TextureBuffer) {
-        this.type = "texture";
-        this.itemSize = 2;
-    } else {
-        this.type = "element";
-        this.itemSize = 1;
+    this.type = type;
+    switch(this.type) {
+        case "position":
+            this.itemSize = 3;
+            break;
+        case "color":
+            this.itemSize = 4;
+            break;
+        case "texture":
+            this.itemSize = 2;
+            break;
+        case "element":
+            this.itemSize = 1;
+            break;
     }
 }
 Buffer.prototype.bind = function(rctx) {
     if(this.bound) return;
     console.log("Binding %s buffer", this.type);
     this.webGLBuffer = rctx.createBuffer();
-    if(this instanceof ElementBuffer) {
+    if(this.type === "element") {
         rctx.bindBuffer(rctx.ELEMENT_ARRAY_BUFFER, this.webGLBuffer);
         rctx.bufferData(rctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.data), rctx.STATIC_DRAW);
     } else {
         rctx.bindBuffer(rctx.ARRAY_BUFFER, this.webGLBuffer);
         rctx.bufferData(rctx.ARRAY_BUFFER, new Float32Array(this.data), rctx.STATIC_DRAW);
     }
-    if(this instanceof TextureBuffer) {
+    if(this.type === "texture") {
         this.image.onload = (function(buffer) {
             return function() {
                 buffer.texture.resolve(buffer.loadFn(rctx));
@@ -40,14 +42,13 @@ Buffer.prototype.bind = function(rctx) {
     this.bound = true;
 };
 Buffer.prototype.rebind = function(canvas, matrices) {
-    var deferred = canvas.q.defer();
+    if(this.type === "element") return;
+    var deferred = this.q.defer();
     var rctx = canvas.rctx;
     var program = canvas.program;
     //Rebind buffer and set vertex attrib pointer
     rctx.bindBuffer(rctx.ARRAY_BUFFER, this.webGLBuffer);
-    if(this.type !== "element") {
-        rctx.vertexAttribPointer(program.vertexAttributes[this.type], this.itemSize, rctx.FLOAT, false, 0, 0);
-    }
+    rctx.vertexAttribPointer(program.vertexAttributes[this.type], this.itemSize, rctx.FLOAT, false, 0, 0);
     //TODO: check if rest of function must be included in previous if statement
     if(this.type === "texture") {
         this.texture.promise.then((function(buffer) {
@@ -79,24 +80,37 @@ Object.defineProperty(Buffer.prototype, "numItems", {
 angular.injector(["ng"]).invoke(["$q", function(q) {
     Buffer.prototype.q = q;
 }]);
+//Buffer types
+Buffer.position = PositionBuffer;
+Buffer.color = ColorBuffer;
+Buffer.texture = TextureBuffer;
+Buffer.element = ElementBuffer;
 
-function PositionBuffer(position) {
-    Buffer.apply(this, arguments);
+function PositionBuffer(data) {
+    Buffer.call(this, data, "position");
 }
 PositionBuffer.prototype = Object.create(Buffer.prototype);
 PositionBuffer.prototype.constructor = PositionBuffer;
 
-function ColorBuffer(color) {
-    Buffer.apply(this, arguments);
+function ColorBuffer(data) {
+    Buffer.call(this, data, "color");
 }
 ColorBuffer.prototype = Object.create(Buffer.prototype);
 ColorBuffer.prototype.constructor = ColorBuffer;
+ColorBuffer.prototype.createData = function(color) {
+    var data = [];
+    for(var i=0; i < this.numItems; i++) {
+        [].push.apply(data, _.template(color, [0, 0, 0, 1]));
+    }
+    return data;
+};
 
 function TextureBuffer(texturePath, numVertices, factor) {
-    Buffer.apply(this, []);
+    Buffer.call(this, [], "texture");
+    factor = factor || 1;
     for(var i=0; i < numVertices; i++) {
         this.data = this.data.concat(_.chain(i.toString(2)).pad(2, "0").chars().map(function(str) {
-            return _(str).toNumber()*(factor || 1);
+            return _(str).toNumber() * factor;
         }).value());
     }
     this.texture = this.q.defer();
@@ -125,8 +139,8 @@ function TextureBuffer(texturePath, numVertices, factor) {
 TextureBuffer.prototype = Object.create(Buffer.prototype);
 TextureBuffer.prototype.constructor = TextureBuffer;
 
-function ElementBuffer(indices) {
-    Buffer.apply(this, arguments);
+function ElementBuffer(data) {
+    Buffer.call(this, data, "element");
 }
 ElementBuffer.prototype = Object.create(Buffer.prototype);
 ElementBuffer.prototype.constructor = ElementBuffer;
