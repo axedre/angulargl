@@ -16,9 +16,8 @@ function Canvas(elementId, options) {
     canvas.init();
 }
 Canvas.prototype.init = function() {
-    var options;
+    var options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true};
     try {
-        options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: false};
         this.rctx = this.HTMLCanvas.getContext("experimental-webgl", options);
         this.rctx.viewportWidth = this.width;
         this.rctx.viewportHeight = this.height;
@@ -125,7 +124,7 @@ Canvas.prototype.clear = function(scope) {
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
     rctx.viewport(0, 0, rctx.viewportWidth, rctx.viewportHeight);
-    //rctx.clear(rctx.COLOR_BUFFER_BIT | rctx.DEPTH_BUFFER_BIT);
+    rctx.clear(rctx.COLOR_BUFFER_BIT | rctx.DEPTH_BUFFER_BIT);
     mat4.perspective(45, rctx.viewportWidth / rctx.viewportHeight, 0.1, 100.0, pMatrix);
     mat4.identity(mvMatrix);
     mat4.translate(mvMatrix, [scope.x, scope.y, scope.z]);

@@ -123,6 +123,10 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     //3.
     //Do stuff
     function tick() {
+        //Request new frame
+        if($scope.play) {
+            AngularGL.Utils.requestAnimFrame(tick);
+        }
         //Update
         if($scope.ry >= 0) {
             $scope.inc = -1/2;
@@ -132,10 +136,6 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         $scope.ry += $scope.inc;
         //Render
         canvas.render($scope);
-        //Request new frame
-        if($scope.play) {
-            AngularGL.Utils.requestAnimFrame(tick);
-        }
     }
     $scope.$watch("play", function(p) {
         if(p) {

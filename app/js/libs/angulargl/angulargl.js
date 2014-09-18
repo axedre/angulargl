@@ -88,6 +88,7 @@ _.mixin({
     }
 });
 
+//Override console.group
 console.group = function() {
     console[Utils.LOG_COLLAPSED? "groupCollapsed" : "group"].apply(console, arguments);
 }

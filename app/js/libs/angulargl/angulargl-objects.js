@@ -123,31 +123,20 @@ Solid.prototype.setColor = function(color) {
 Solid.prototype.draw = function(canvas, matrices) {
     var deferred = this.q.defer();
     CanvasObject.prototype.draw.apply(this, arguments).then(function(object) {
-        /*console.log(object);
-        deferred.resolve(object);*/
-        async.eachSeries(this.faces, function(face, cb) {
+        async.eachSeries(object.faces, function(face, cb) {
             console.group("Drawing face %O", face);
             face.draw(canvas, matrices).then(function() {
                 console.info("Face drawn");
                 console.groupEnd();
                 cb();
             });
-        }, (function(object) {
-            return function() {
-                return deferred.resolve(object);
-            };
-        })(this));
+        }, function() {
+            return deferred.resolve(object);
+        });
     });
     return deferred.promise;
-    /*this.q.all(_.invoke.apply(_, [this.faces, "draw"].concat(_.toArray(arguments)))).then((function(object) {
-        return function(promises) {
-            console.log(promises);
-            deferred.resolve(object);
-        };
-    })(this));*/
-
-    return deferred.promise;
 };
+
 function Vertex() {}
 
 function LightSource() {}

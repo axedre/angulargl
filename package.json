@@ -18,7 +18,8 @@
     "dependencies": {
         "express": "*",
         "underscore": "*",
-        "underscore.string": "*"
+        "underscore.string": "*",
+	"async": "*"
     },
     "devDependencies": {},
     "bundleDependencies": [],
