@@ -49,8 +49,10 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             {position: [-0.5,  0.5,  0.5], color: [1, 0, 1]},
             {position: [-0.5,  0.5, -0.5], color: [1, 0, 1]}
         ]
-    ], elementArray);//.setColor([1, 1, 1]);
-//.setTexture("js/libs/angulargl/textures/bricks1.png");
+    ])
+        .setElementArray(elementArray)
+        .setColor([0.8, 0.8, 1]);
+        //.setTexture("js/libs/angulargl/textures/bricks1.png"); //TODO!
     /*var cubeNoElemArray = new WebGL.Solid([ //Another cube, but no element array
         [ //Front face
             {position: [0, 0, 1], color: [0.92, 0.57, 0.22]},
@@ -89,29 +91,28 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         {position: [0.5, -0.5]},
         {position: [-0.5, 0.5]},
         {position: [0.5, 0.5]}
-    ]).setTexture("js/libs/angulargl/textures/bricks1.png", 10);
+    ])
+        .setTexture("js/libs/angulargl/textures/bricks1.png", 10);
     var triangle = [
         new AngularGL.Shape([ //A triangle
-            {position: [-0.5, -0.5], color: [0.5, 0, 0]},
-            {position: [0.5, -0.5], color: [0.5, 0, 0]},
-            {position: [0, 0.5], color: [0.5, 0, 0]}
+            {position: [-0.5, -0.5, 1], color: [0.5, 0, 0]},
+            {position: [0.5, -0.5, 1], color: [0.5, 0, 0]},
+            {position: [0, 0.5, 1], color: [0.5, 0, 0]}
         ]),
         new AngularGL.Shape([ //Another triangle
             {position: [1, -0.5], color: [0, 0, 0.5]},
             {position: [2, -0.5], color: [0, 0, 0.5]},
             {position: [1.5, 0.5], color: [0, 0, 0.5]}
-        ])//.setTexture("js/libs/angulargl/textures/bricks1.png", 10)
+        ]).setTexture("js/libs/angulargl/textures/bricks2.png", 10)
     ];
 
     //1.
     var canvas = new AngularGL.Canvas("canvas", {
-        width: 1100,
-        height: 800,
         background: [0, 0, 0] //black
     });
-    //canvas.addObjects(cubeWithElementArray);
+    canvas.addObjects(cubeWithElementArray);
     //canvas.addObjects(square);
-    canvas.addObjects(cubeWithElementArray, triangle[1]);
+    //canvas.addObjects(square, triangle);
 
     //2.
     canvas.addShaders({
@@ -120,79 +121,65 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         vertexShader: "vertex.c"
     });
 
-    //3.
-    //Do stuff
-    function tick() {
-        //Request new frame
-        if($scope.play) {
-            AngularGL.Utils.requestAnimFrame(tick);
-        }
-        //Update
-        if($scope.ry >= 0) {
-            $scope.inc = -1/2;
-        } else if ($scope.ry <= -20) {
-            $scope.inc = 1/2;
-        }
-        $scope.ry += $scope.inc;
-        //Render
-        canvas.render($scope);
-    }
-    $scope.$watch("play", function(p) {
-        if(p) {
-            tick();
-        }
-    });
-
+    //3. Attach event listeners
     canvas.on({
-        "keydown": function(e) {
-            $scope.$apply(function() {
-                /*
-                switch(e.keyCode) {
-                    case 37: //Left cursor key
-                        $scope.x--;
-                        break;
-                    case 38: //Up cursor key
-                        $scope.y++;
-                        break;
-                    case 39: //Right cursor key
-                        $scope.x++;
-                        break;
-                    case 40: //Down cursor key
-                        $scope.y--;
-                        break;
-                }
-                */
-                switch(e.keyCode) {
-                    case 37: //Left cursor key
-                        $scope.ry--;
-                        break;
-                    case 38: //Up cursor key
-                        $scope.rx--;
-                        break;
-                    case 39: //Right cursor key
-                        $scope.ry++;
-                        break;
-                    case 40: //Down cursor key
-                        $scope.rx++;
-                        break;
-                }
-            });
+        keydown: function(e) {
+            switch(e.keyCode) {
+                case 37: //Left cursor key
+                    $scope.ry--;
+                    break;
+                case 38: //Up cursor key
+                    $scope.rx--;
+                    break;
+                case 39: //Right cursor key
+                    $scope.ry++;
+                    break;
+                case 40: //Down cursor key
+                    $scope.rx++;
+                    break;
+            }
         },
-        "mousewheel": function(e) {
-            $scope.$apply(function() {
-                if(e.wheelDelta >= 0) {
-                    $scope.z++;
-                } else {
-                    $scope.z--;
-                }
-            });
+        mousewheel: function(e) {
+            if(e.wheelDelta >= 0) {
+                $scope.z++;
+            } else {
+                $scope.z--;
+            }
         }
     });
 
-    //4. Render each time $scope.z changes
-    $scope.$watch("x+y+z+rx+ry+rz", function() {
-        if(!$scope.play) {
-            canvas.render($scope);
-        }
-    });
+    //4. Do stuff
+    (function() {
+        //Define an animation function (a function that modifies and returns the $scope)
+        var animateFn = function() {
+            console.time("animate");
+            //Update scope
+            if($scope.ry >= 0) {
+                $scope.inc = -1/2;
+            } else if ($scope.ry <= -20) {
+                $scope.inc = 1/2;
+            }
+            $scope.ry += $scope.inc;
+            console.timeEnd("animate");
+            return $scope;
+        };
+
+        //Toggle animate
+        $scope.$watch("play", function(p) {
+            if(p) {
+                async.whilst(function() {
+                    return $scope.play;
+                }, function(cb) {
+                    canvas.animate(animateFn, cb);
+                }, _.noop);
+            }
+        });
+
+        //Render each time $scope is changed by user events
+        $scope.$watch("x+y+z+rx+ry+rz", function() {
+            if(!$scope.play) {
+                canvas.render($scope);
+            }
+        });
+    })();
 }]);

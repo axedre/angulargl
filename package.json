@@ -17,9 +17,10 @@
     },
     "dependencies": {
         "express": "*",
+        "serve-favicon": "*",
         "underscore": "*",
         "underscore.string": "*",
-	"async": "*"
+        "async": "*"
     },
     "devDependencies": {},
     "bundleDependencies": [],

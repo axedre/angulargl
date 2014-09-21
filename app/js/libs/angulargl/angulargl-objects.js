@@ -9,14 +9,7 @@ CanvasObject.prototype.bindBuffers = function(rctx) {
     _.invoke(this.buffers, "bind", rctx);
 };
 CanvasObject.prototype.setTexture = function(texturePath, factor) {
-    //TODO: Move to subclasses
-    if(this instanceof Solid) {
-        _.invoke(this.faces, "setTexture", texturePath, factor);
-        //TODO: create a single TextureBuffer for all faces
-    } else {
-        this.buffers.texture = new TextureBuffer(texturePath, this.vertices.length, factor);
-        delete this.buffers.color;
-    }
+    this.buffers.texture = new TextureBuffer(this, texturePath, factor);
     return this; //to allow chaining
 };
 CanvasObject.prototype.draw = function(canvas, matrices) {
@@ -70,10 +63,10 @@ function Shape(vertices) {
     }, this);
     _.extend(this.buffers, {
         position: new PositionBuffer(_.reduce(_.pluck(vertices, "position"), function(v, a) {
-            return v.concat(_.template(a, [0, 0, 0]));
+            return v.concat(_.model(a, [0, 0, 0]));
         }, [])),
         color: new ColorBuffer(_.reduce(_.pluck(vertices, "color"), function(v, a) {
-            return v.concat(_.template(a, [0, 0, 0, 1]));
+            return v.concat(_.model(a, [0, 0, 0, 1]));
         }, []))
     });
 }

@@ -19,33 +19,24 @@ function AngularGL(injector) {
 }
 
 var Utils = {
+    LOG_LEVEL: 1,
     LOG_COLLAPSED: true,
     requestAnimFrame: function(cb) {
-        (window.requestAnimationFrame ||
+        /*(window.requestAnimationFrame ||
          window.webkitRequestAnimationFrame ||
          window.mozRequestAnimationFrame ||
          window.oRequestAnimationFrame ||
          window.msRequestAnimationFrame ||
-         function(callback) {
-            window.setTimeout(callback, 1000/60);
-        })(cb);
-    },
-    initObjectBuffers: function(object, rctx) {
-        var buffers = [];
-        if(object.type === "shape") {
-            buffers.push(this.bufferPair(object.vertices, rctx));
-        } else {
-            //TODO: distinguish between "solid" and "objectCollection" object types
-            _.each(object.faces, function(face) {
-                buffers = buffers.concat(this.initObjectBuffers(face, rctx));
-            }, this);
-            object.elemArrayBuffer = rctx.createBuffer();
-            rctx.bindBuffer(rctx.ELEMENT_ARRAY_BUFFER, object.elemArrayBuffer);
-            rctx.bufferData(rctx.ELEMENT_ARRAY_BUFFER, new Uint16Array(object.elemArray), rctx.STATIC_DRAW);
-        }
-        return buffers;
+         function(cb) {
+            window.setTimeout(cb, 1000/60);
+        })(cb);*/
+        Utils.timeout(cb, 1000/60);
     }
 };
+//Inject $timeout service in Utils object
+angular.injector(["ng"]).invoke(["$timeout", function(timeout) {
+    Utils.timeout = timeout;
+}]);
 
 //Set Matrix Uniforms
 mat4.setMatrixUniforms = function(rctx, program, matrices) {
@@ -78,7 +69,7 @@ _.mixin({
             iteratee.apply(this, [first].concat(_.zip.apply(this, args)[i]));
         }, ctx);
     },
-    template: function(array, templateArray) {
+    model: function(array, templateArray) {
         var a = [];
         array = array || [];
         for(var i=0, l=templateArray.length; i < l; i++) {
@@ -90,5 +81,11 @@ _.mixin({
 
 //Override console.group
 console.group = function() {
-    console[Utils.LOG_COLLAPSED? "groupCollapsed" : "group"].apply(console, arguments);
+    console[Utils.LOG_COLLAPSED? "groupCollapsed" : "_group"].apply(console, arguments);
+}
+if(!Utils.LOG_LEVEL) {
+    _.each(["log", "debug", "info", "warn", "group", "groupEnd", "time", "timeEnd"], function(method) {
+        console[_.sprintf("_%s", method)] = console[method]; //Save reference to original method
+        console[method] = _.noop;
+    });
 }

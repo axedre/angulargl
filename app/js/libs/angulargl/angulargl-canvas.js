@@ -6,21 +6,25 @@ function Canvas(elementId, options) {
     var canvas = this;
     canvas.width = options.width || 300;
     canvas.height = options.height || 150;
-    canvas.background = _.template(options.background, [1, 1, 1, 1]);
-    canvas.HTMLCanvas = document.getElementById(elementId);
-    canvas.HTMLCanvas.width = canvas.width;
-    canvas.HTMLCanvas.height = canvas.height;
+    canvas.background = _.model(options.background, [0, 0, 0, 1]);
     canvas.objects = [];
     canvas.shaders = [];
     //Initialize canvas
-    canvas.init();
+    canvas.init(elementId);
 }
-Canvas.prototype.init = function() {
+Canvas.prototype.init = function(elementId) {
     var options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true};
     try {
-        this.rctx = this.HTMLCanvas.getContext("experimental-webgl", options);
-        this.rctx.viewportWidth = this.width;
-        this.rctx.viewportHeight = this.height;
+        var rctx = document.getElementById(elementId).getContext("webgl", options);
+        var width = rctx.canvas.clientWidth;
+        var height = rctx.canvas.clientHeight;
+        _.extend(rctx.canvas, {
+            width: width,
+            height: height
+        });
+        rctx.clearColor.apply(rctx, this.background);
+        rctx.viewport(0, 0, rctx.canvas.width, rctx.canvas.height);
+        this.rctx = rctx;
         console.log("Canvas initialized");
     } catch (e) {
         console.warn("Could not initialise rendering context:", e);
@@ -51,6 +55,7 @@ Canvas.prototype.addShaders = function(shaderOptions) {
     })(this));
 };
 Canvas.prototype.render = function(scope) {
+    var deferred = this.q.defer();
     var _render = function(canvas) {
         console.time("Rendering");
         //Initialize WebGL program (one time only)
@@ -69,6 +74,7 @@ Canvas.prototype.render = function(scope) {
             });
         }, function() {
             console.timeEnd("Rendering");
+            deferred.resolve();
         });
     };
     if(_.every(_.pluck(this.shaders, "compiled"), function(compiledShader) {
@@ -87,6 +93,7 @@ Canvas.prototype.render = function(scope) {
             };
         })(this));
     }
+    return deferred.promise;
 };
 Canvas.prototype.initProgram = function() {
     if(this.program) return; //Early exit
@@ -117,15 +124,22 @@ Canvas.prototype.initProgram = function() {
 };
 Canvas.prototype.clear = function(scope) {
     console.log("Clearing canvas");
+    scope = scope || { //Default x, y, z, rx, ry, rz if no scope is passed
+        x: 0,
+        y: 0,
+        z: -3,
+        rx: 0,
+        ry: 0,
+        rz: 0
+    }
     var rctx = this.rctx;
     var program = this.program;
-    rctx.clearColor.apply(rctx, this.background);
     rctx.enable(rctx.DEPTH_TEST);
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
-    rctx.viewport(0, 0, rctx.viewportWidth, rctx.viewportHeight);
     rctx.clear(rctx.COLOR_BUFFER_BIT | rctx.DEPTH_BUFFER_BIT);
-    mat4.perspective(45, rctx.viewportWidth / rctx.viewportHeight, 0.1, 100.0, pMatrix);
+    var aspect = rctx.canvas.clientWidth / rctx.canvas.clientHeight;
+    mat4.perspective(45, aspect, 0.1, 100.0, pMatrix);
     mat4.identity(mvMatrix);
     mat4.translate(mvMatrix, [scope.x, scope.y, scope.z]);
     mat4.rotate(mvMatrix, scope.rx/10, [1, 0, 0]);
@@ -133,19 +147,42 @@ Canvas.prototype.clear = function(scope) {
     mat4.rotate(mvMatrix, scope.rz/10, [0, 0, 1]);
     return [pMatrix, mvMatrix];
 };
+Canvas.prototype.resize = function() {
+    var canvas = this.rctx.canvas;
+    var width = canvas.clientWidth;
+    var height = canvas.clientHeight;
+    if (canvas.width != width || canvas.height != height) {
+        canvas.width = width;
+        canvas.height = height;
+    }
+    return this; //to allow chaining
+};
+Canvas.prototype.animate = function(animateFn, cb) {
+    //Render
+    this.resize().render(animateFn()).then(function() {
+        //Request animation frame to call cb function
+        Utils.requestAnimFrame(cb);
+    });
+};
 /* Event handling */
 Canvas.prototype.on = function() {
+    var scope = angular.element(this.rctx.canvas).scope();
     var bind = (function(canvas) {
         return function(e, handleFn) {
-            var o = _(e).startsWith("key")? document : canvas.HTMLCanvas;
-            o[_.sprintf("on%s", e)] = handleFn;
+            (_.startsWith(e, "key")? document : canvas)[_.sprintf("on%s", e)] = function(e) {
+                scope.$apply(function() {
+                    handleFn(e);
+                });
+            };
         };
-    })(this);
-    if(arguments.length === 1 && _.isObject(arguments[0])) {
+    })(this.rctx.canvas);
+    if(_.isObject(arguments[0])) {
+        //Event map
         _.each(arguments[0], function(handleFn, e) {
             bind(e, handleFn);
         });
     } else {
+        //Event name, event handler
         bind.apply(null, arguments);
     }
 };

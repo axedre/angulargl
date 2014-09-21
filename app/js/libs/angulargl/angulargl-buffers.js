@@ -100,24 +100,20 @@ ColorBuffer.prototype.constructor = ColorBuffer;
 ColorBuffer.prototype.createData = function(color) {
     var data = [];
     for(var i=0; i < this.numItems; i++) {
-        [].push.apply(data, _.template(color, [0, 0, 0, 1]));
+        [].push.apply(data, _.model(color, [0, 0, 0, 1]));
     }
     return data;
 };
 
-function TextureBuffer(texturePath, numVertices, factor) {
+function TextureBuffer(obj, texturePath, factor) {
     Buffer.call(this, [], "texture");
     factor = factor || 1;
-    for(var i=0; i < numVertices; i++) {
-        this.data = this.data.concat(_.chain(i.toString(2)).pad(2, "0").chars().map(function(str) {
-            return _(str).toNumber() * factor;
-        }).value());
-    }
+    this.data = TextureBuffer.computeData(obj instanceof Solid ? obj.faces : obj.vertices.length, factor);
     this.texture = this.q.defer();
     this.image = new Image();
     this.path = texturePath;
     this.loadFn = function(rctx) {
-        var method = 1;
+        var method = 2;
         //Method n. 1 is the one illustrated on learningwebgl.com, lesson5, function handleLoadedTexture()
         //Method n. 2 is the one illustrated on lesson "Using textures in WebGL", http://snipurl.com/299a1r3
         //Neither work :(
@@ -138,6 +134,21 @@ function TextureBuffer(texturePath, numVertices, factor) {
 }
 TextureBuffer.prototype = Object.create(Buffer.prototype);
 TextureBuffer.prototype.constructor = TextureBuffer;
+TextureBuffer.computeData = function(o, factor) {
+    var data = [];
+    if(_.isArray(o)) {
+        data = _.reduce(o, function(data, o) {
+            return data.concat(TextureBuffer.computeData(o, factor));
+        }, []);
+    } else {
+        while(o-- > 0) {
+            data = data.concat(_.chain(o.toString(2)).pad(2, "0").chars().map(function(str) {
+                return _(str).toNumber() * factor;
+            }).value());
+        }
+    }
+    return data;
+};
 
 function ElementBuffer(data) {
     Buffer.call(this, data, "element");
