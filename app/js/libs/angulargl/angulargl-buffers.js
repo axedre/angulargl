@@ -15,6 +15,9 @@ function Buffer(data, type) {
         case "texture":
             this.itemSize = 2;
             break;
+        case "normal":
+            this.itemSize = 3;
+            break;
         case "element":
             this.itemSize = 1;
             break;
@@ -49,7 +52,6 @@ Buffer.prototype.rebind = function(canvas, matrices) {
     //Rebind buffer and set vertex attrib pointer
     rctx.bindBuffer(rctx.ARRAY_BUFFER, this.webGLBuffer);
     rctx.vertexAttribPointer(program.vertexAttributes[this.type], this.itemSize, rctx.FLOAT, false, 0, 0);
-    //TODO: check if rest of function must be included in previous if statement
     if(this.type === "texture") {
         this.texture.promise.then((function(buffer) {
             return function(texture) {
@@ -66,6 +68,16 @@ Buffer.prototype.rebind = function(canvas, matrices) {
             }
         })(this));
     } else {
+        if(this.type === "normal") {
+            console.log("Normal:", this.data);
+            rctx.uniform3f.apply(rctx, [program.ambientColorUniform].concat(canvas._ambientColor));
+            var lightingDirection = canvas._lightDirection;
+            var adjustedLD = vec3.create();
+            vec3.normalize(lightingDirection, adjustedLD);
+            vec3.scale(adjustedLD, -1);
+            rctx.uniform3fv(program.lightingDirectionUniform, adjustedLD);
+            rctx.uniform3f.apply(rctx, [program.directionalColorUniform].concat(canvas._lightColor));
+        }
         console.log("%sBuffer resolved", _(this.type).capitalize());
         deferred.resolve(this);
     }
@@ -81,9 +93,12 @@ angular.injector(["ng"]).invoke(["$q", function(q) {
     Buffer.prototype.q = q;
 }]);
 //Buffer types
+Buffer.types = ["position", "color", "texture", "normal", "element"];
+//TODO: improve flow here
 Buffer.position = PositionBuffer;
 Buffer.color = ColorBuffer;
 Buffer.texture = TextureBuffer;
+Buffer.normal = NormalBuffer;
 Buffer.element = ElementBuffer;
 
 function PositionBuffer(data) {
@@ -107,7 +122,6 @@ ColorBuffer.prototype.createData = function(color) {
 
 function TextureBuffer(obj, texturePath, factor) {
     Buffer.call(this, [], "texture");
-    factor = factor || 1;
     this.data = TextureBuffer.computeData(obj instanceof Solid ? obj.faces : obj.vertices.length, factor);
     this.texture = this.q.defer();
     this.image = new Image();
@@ -142,13 +156,20 @@ TextureBuffer.computeData = function(o, factor) {
         }, []);
     } else {
         while(o-- > 0) {
-            data = data.concat(_.chain(o.toString(2)).pad(2, "0").chars().map(function(str) {
-                return _(str).toNumber() * factor;
-            }).value());
+            data = data.concat(_.numToBitArray(o, factor));
         }
     }
     return data;
 };
+
+function NormalBuffer(normal, numVertices) {
+    var data = _.reduce(_.range(numVertices), function(data) {
+        return data.concat(normal);
+    }, []);
+    Buffer.call(this, data, "normal");
+}
+NormalBuffer.prototype = Object.create(Buffer.prototype);
+NormalBuffer.prototype.constructor = NormalBuffer;
 
 function ElementBuffer(data) {
     Buffer.call(this, data, "element");

@@ -2,27 +2,51 @@
 
 angular.module("AngularGL.Canvas", []);
 
-function Canvas(elementId, options) {
+function Canvas(elementId, options, scope) {
     var canvas = this;
     canvas.width = options.width || 300;
     canvas.height = options.height || 150;
-    canvas.background = _.model(options.background, [0, 0, 0, 1]);
     canvas.objects = [];
     canvas.shaders = [];
+    canvas.ambientColor = options.ambientColor || "#000000";
+    canvas.lightColor = options.lightColor || "#ffffff";
+    canvas.lightDirection = options.lightDirection || [0, -1, 0];
+    //Initialize scope
+    canvas.initScope(scope);
     //Initialize canvas
     canvas.init(elementId);
 }
+Canvas.prototype.initScope = function(scope, lighting) {
+    scope.canvas = this;
+    scope.x = 0;
+    scope.y = 0;
+    scope.z = -3;
+    scope.rx = 0;
+    scope.ry = 0;
+    scope.rz = 0;
+    var unwatchCanvas = scope.$watch("canvas", function(canvas) {
+        if(canvas) {
+            scope.$watch("canvas.ambientColor", function(ambientColor) {
+                ambientColor && canvas.applyAmbientColor(ambientColor, scope);
+            });
+            scope.$watch("canvas.lightColor", function(lightColor) {
+                lightColor && canvas.applyLightColor(lightColor, scope);
+            });
+            scope.$watch("canvas.lightDirection", function(lightDirection) {
+                lightDirection && canvas.applyLightDirection(lightDirection, scope);
+            }, true);
+            unwatchCanvas();
+        }
+    });
+};
 Canvas.prototype.init = function(elementId) {
     var options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true};
     try {
         var rctx = document.getElementById(elementId).getContext("webgl", options);
-        var width = rctx.canvas.clientWidth;
-        var height = rctx.canvas.clientHeight;
         _.extend(rctx.canvas, {
-            width: width,
-            height: height
+            width: rctx.canvas.clientWidth,
+            height: rctx.canvas.clientHeight
         });
-        rctx.clearColor.apply(rctx, this.background);
         rctx.viewport(0, 0, rctx.canvas.width, rctx.canvas.height);
         this.rctx = rctx;
         console.log("Canvas initialized");
@@ -30,10 +54,31 @@ Canvas.prototype.init = function(elementId) {
         console.warn("Could not initialise rendering context:", e);
     }
 };
-Canvas.prototype.addObjects = function() {
-    _.each(_.flatten(arguments), function(object) {
-        this.objects.push(object);
+Canvas.prototype.applyAmbientColor = function(color, scope) {
+    this._ambientColor = _.model(_.normalize(Utils.hexToVec(color), 255), [0, 0, 0, 1]);
+    return; //TODO ↓
+    if(this.isAnimating || this.isRendering) return;
+    this.render(scope);
+};
+Canvas.prototype.applyLightColor = function(color, scope) {
+    this._lightColor = _.model(_.normalize(Utils.hexToVec(color), 255), [0, 0, 0, 1]);
+    return; //TODO ↓
+    if(this.isAnimating || this.isRendering) return;
+    this.render(scope);
+};
+Canvas.prototype.applyLightDirection = function(lightDirection, scope) {
+    this._lightDirection = lightDirection;
+    return; //TODO ↓
+    if(this.isAnimating || this.isRendering) return;
+    this.render(scope);
+};
+Canvas.prototype.add = function(collection, data) {
+    _.each(_.flatten(data), function(object) {
+        this[collection].push(object);
     }, this);
+};
+Canvas.prototype.addObjects = function() {
+    this.add("objects", arguments);
 };
 Canvas.prototype.addShaders = function(shaderOptions) {
     var q = this.q;
@@ -57,6 +102,7 @@ Canvas.prototype.addShaders = function(shaderOptions) {
 Canvas.prototype.render = function(scope) {
     var deferred = this.q.defer();
     var _render = function(canvas) {
+        canvas.isRendering = true;
         console.time("Rendering");
         //Initialize WebGL program (one time only)
         canvas.initProgram();
@@ -73,6 +119,7 @@ Canvas.prototype.render = function(scope) {
                 cb();
             });
         }, function() {
+            canvas.isRendering = false;
             console.timeEnd("Rendering");
             deferred.resolve();
         });
@@ -109,17 +156,23 @@ Canvas.prototype.initProgram = function() {
     }
     rctx.useProgram(program);
     program.vertexAttributes = {};
-    _.each(["position", "color", "texture"], function(vertexAttributeType) {
+    _.each(Buffer.types, function(vertexAttributeType) {
+        if(vertexAttributeType === "element") return;
         var location = _.sprintf("aVertex%s", _.capitalize(vertexAttributeType));
-        if((program.vertexAttributes[vertexAttributeType] = rctx.getAttribLocation(program, location)) != -1) {
+        if((program.vertexAttributes[vertexAttributeType] = rctx.getAttribLocation(program, location)) !== -1) {
             rctx.enableVertexAttribArray(program.vertexAttributes[vertexAttributeType]);
+            console.log("%s buffer enabled", _.capitalize(vertexAttributeType));
         } else {
             console.warn("Could not enable %s vertex attribute array", vertexAttributeType);
         }
     });
     program.pMatrixUniform = rctx.getUniformLocation(program, "uPMatrix");
     program.mvMatrixUniform = rctx.getUniformLocation(program, "uMVMatrix");
-    program.sampleUniform = rctx.getUniformLocation(program, "uSampler");
+    program.nMatrixUniform = rctx.getUniformLocation(program, "uNMatrix");
+    program.samplerUniform = rctx.getUniformLocation(program, "uSampler");
+    program.ambientColorUniform = rctx.getUniformLocation(program, "uAmbientColor");
+    program.lightingDirectionUniform = rctx.getUniformLocation(program, "uLightingDirection");
+    program.directionalColorUniform = rctx.getUniformLocation(program, "uDirectionalColor");
     this.program = program;
 };
 Canvas.prototype.clear = function(scope) {
@@ -137,14 +190,15 @@ Canvas.prototype.clear = function(scope) {
     rctx.enable(rctx.DEPTH_TEST);
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
+    rctx.clearColor.apply(rctx, this._ambientColor);
     rctx.clear(rctx.COLOR_BUFFER_BIT | rctx.DEPTH_BUFFER_BIT);
     var aspect = rctx.canvas.clientWidth / rctx.canvas.clientHeight;
     mat4.perspective(45, aspect, 0.1, 100.0, pMatrix);
     mat4.identity(mvMatrix);
     mat4.translate(mvMatrix, [scope.x, scope.y, scope.z]);
-    mat4.rotate(mvMatrix, scope.rx/10, [1, 0, 0]);
-    mat4.rotate(mvMatrix, scope.ry/10, [0, 1, 0]);
-    mat4.rotate(mvMatrix, scope.rz/10, [0, 0, 1]);
+    mat4.rotate(mvMatrix, Utils.degToRad(scope.rx), [1, 0, 0]);
+    mat4.rotate(mvMatrix, Utils.degToRad(scope.ry), [0, 1, 0]);
+    mat4.rotate(mvMatrix, Utils.degToRad(scope.rz), [0, 0, 1]);
     return [pMatrix, mvMatrix];
 };
 Canvas.prototype.resize = function() {
@@ -172,6 +226,7 @@ Canvas.prototype.on = function() {
             (_.startsWith(e, "key")? document : canvas)[_.sprintf("on%s", e)] = function(e) {
                 scope.$apply(function() {
                     handleFn(e);
+                    !_.startsWith(e.type, "key") && e.preventDefault();
                 });
             };
         };

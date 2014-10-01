@@ -1,10 +1,40 @@
 <div class="well container">
     <div>
-        <button class="btn btn-default" ng-click="play = !play">
-            <span class="glyphicon" ng-class="'glyphicon-'+(play && 'pause' || 'play')"></span>
-        </button>
+        <div class="row">
+            <div class="col-xs-4">
+                <label class="control-label col-xs-6">
+                    Ambient color
+                    <input type="color" class="form-control" ng-model="canvas.ambientColor"/>
+                </label>
+                <label class="control-label col-xs-6">
+                    Light color
+                    <input type="color" class="form-control" ng-model="canvas.lightColor"/>
+                </label>
+            </div>
+            <div class="col-xs-4">
+                <div class="row">
+                    <label class="control-label col-xs-4">
+                        Direction X
+                        <input type="number" class="form-control" ng-model="canvas.lightDirection[0]"/>
+                    </label>
+                    <label class="control-label col-xs-4">
+                        Direction Y
+                        <input type="number" class="form-control" ng-model="canvas.lightDirection[1]"/>
+                    </label>
+                    <label class="control-label col-xs-4">
+                        Direction Z
+                        <input type="number" class="form-control" ng-model="canvas.lightDirection[2]"/>
+                    </label>
+                </div>
+            </div>
+        </div>
     </div>
     <div>
         <canvas id="canvas"></canvas>
+    </div>
+    <div class="text-right">
+        <button class="btn" ng-class="'btn-'+(play && 'warning' || 'success')" ng-click="play = !play">
+            <span class="glyphicon" ng-class="'glyphicon-'+(play && 'pause' || 'play')"></span>
+        </button>
     </div>
 </div>

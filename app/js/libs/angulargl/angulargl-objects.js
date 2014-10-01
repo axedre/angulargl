@@ -28,12 +28,12 @@ CanvasObject.prototype.draw = function(canvas, matrices) {
                 //Disable unused vertex attributes
                 _.each(program.vertexAttributes, function(i, vertexAttributeType) {
                     if(!rctx.getVertexAttrib(i, rctx.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING)) {
-                        console.log("Attribute %d is unused, disabling", i);
+                        console.log("Attribute %d (%s) is unused, disabling", i, vertexAttributeType);
                         rctx.disableVertexAttribArray(i);
                     }
                 });
                 //Set matrix uniforms
-                mat4.setMatrixUniforms(rctx, program, matrices);
+                Utils.setMatrixUniforms(rctx, program, matrices);
                 //Draw either elements or arrays
                 if(object.buffers.element) {
                     rctx.drawElements(rctx.TRIANGLES, object.buffers.element.numItems, rctx.UNSIGNED_SHORT, 0);
@@ -56,10 +56,10 @@ angular.injector(["ng"]).invoke(["$q", function(q) {
 }]);
 
 function Shape(vertices) {
-    CanvasObject.apply(this, arguments);
+    CanvasObject.call(this);
     this.vertices = [];
     _.each(vertices, function(vertex) {
-        this.vertices.push(new Vertex());
+        this.vertices.push(new Vertex(vertex.position));
     }, this);
     _.extend(this.buffers, {
         position: new PositionBuffer(_.reduce(_.pluck(vertices, "position"), function(v, a) {
@@ -67,14 +67,40 @@ function Shape(vertices) {
         }, [])),
         color: new ColorBuffer(_.reduce(_.pluck(vertices, "color"), function(v, a) {
             return v.concat(_.model(a, [0, 0, 0, 1]));
-        }, []))
+        }, [])),
+        normal: new NormalBuffer(this.normal, this.vertices.length)
     });
 }
 Shape.prototype = Object.create(CanvasObject.prototype);
 Shape.prototype.constructor = Shape;
+Object.defineProperty(Shape.prototype, "normal", {
+    get: function() {
+        var out;
+        var i = 4;
+        do {
+            out = [];
+            var vectors = _.map(_.first(_.pluck(this.vertices, "data"), 3), function(vertex) {
+                var shift = _.numToBitArray(4 >> i, 1, 3);
+                return _.model(vec3.add(vertex, shift, vec3.create()), [0, 0, 0, 1]);
+            });
+            for(var j=0; j < 4; j++) {
+                var a = [];
+                for(var k=0; k < 4; k++) {
+                    a.push(k===j? j%2? -1 : 1 : 0);
+                }
+                out.push(mat4.determinant([].concat.apply(a, vectors)));
+            }
+            out = _.first(_.map(out, function(c) {
+                return !c? c : Math.min(Math.ceil(Math.abs(_.last(out)/c), 1));
+            }), 3);
+            i--;
+        } while(!_.some(out) && i);
+        return out;
+    }
+});
 
 function Solid(faces, elementArray) {
-    CanvasObject.apply(this, arguments);
+    CanvasObject.call(this);
     this.faces = [];
     _.each(faces, function(face) {
         this.faces.push(new Shape(face));
@@ -130,6 +156,8 @@ Solid.prototype.draw = function(canvas, matrices) {
     return deferred.promise;
 };
 
-function Vertex() {}
+function Vertex(vertexPosition) {
+    this.data = _.model(vertexPosition, vec3.create());
+}
 
 function LightSource() {}
