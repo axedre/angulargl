@@ -2,8 +2,9 @@
 
 angular.module("AngularGL.Canvas", []);
 
-function Canvas(elementId, options, scope) {
+function Canvas(elementId, scope, options) {
     var canvas = this;
+    options = options || {};
     canvas.width = options.width || 300;
     canvas.height = options.height || 150;
     canvas.objects = [];

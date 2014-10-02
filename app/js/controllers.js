@@ -113,7 +113,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             {position: [ 0.5,  0.5, 1.0]}
         ]).setColor([1, 0, 0])
     ];
-    
+    var square = squares[0].setColor([1, 0, 0]);
     //0.3 triangles
     var triangles = [
         new AngularGL.Shape([ //A triangle
@@ -140,24 +140,26 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         //.setTexture("js/libs/angulargl/textures/bricks2.png", 20);
     
     //1. Declare canvas
-    var canvas = new AngularGL.Canvas("canvas", {
-        ambientColor: "#000000",
-        lightColor: "#ffffff",
-        lightDirection: [0, -1, 0]
-    }, $scope);
-    //canvas.addObjects(floor);
-    canvas.addObjects(cubeNoElementArray);
+    var canvas = new AngularGL.Canvas("canvas", $scope, {
+        //ambientColor: "#000000",
+        //lightColor: "#ffffff",
+        lightDirection: [0, -1, -1]
+    });
+    
+    //2. Add objects
+    canvas.addObjects(floor, square);
+    //canvas.addObjects(cubeNoElementArray);
     //canvas.addObjects(squares[0]);
     //canvas.addObjects(triangle);
 
-    //2. Add shaders
+    //3. Add shaders
     canvas.addShaders({
         path: "js/libs/angulargl/shaders/",
         fragmentShader: "fragmentMixed.c",
         vertexShader: "vertex.c"
     });
 
-    //3. Attach event listeners
+    //4. Attach event listeners
     canvas.on({
         keydown: function(e) {
             switch(e.keyCode) {
@@ -184,7 +186,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         }
     });
 
-    //4. Animation
+    //5. Animation
     (function() {
         //Define an animation function (a function that modifies and returns the model)
         //TODO: don't pass whole scope but only object (model) containgin required properties
