@@ -2,9 +2,9 @@
 
 angular.module("AngularGLApp.controllers", ["AngularGL"])
 .controller("MainCtrl", ["$http", "$scope", "$timeout", "AngularGL", function($http, $scope, $timeout, AngularGL) {
-    
+
     //0. Declare objects
-    
+
     //0.1 Cubes
     var elementArray = [ //Element array
         0,  1,  2,      0,  2,  3,    //Front
@@ -47,9 +47,9 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             {position: [-1.0,  1.0, -1.0], color: [1, 0, 1]}
         ]
     ])
-        .setElementArray(elementArray)
-        .setColor([0.8, 0.8, 1]);
-        //.setTexture("js/libs/angulargl/textures/bricks1.png"); //TODO
+    .setElementArray(elementArray)
+    .setColor([0.8, 0.8, 1]);
+    //.setTexture("js/libs/angulargl/textures/bricks1.png"); //TODO
     var cubeNoElementArray = new AngularGL.Solid([ //Another cube, but no element array
         [ //Front face
             {position: [-0.5, -0.5, 0.5]},
@@ -83,9 +83,9 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             {position: [-0.5,  0.5, -0.5]}
         ]
     ])
-        .setColor([0.8, 0.8, 1]);
-        //.setTexture("js/libs/webgl/textures/bricks2.png"); //TODO
-   
+    .setColor([0.8, 0.8, 1]);
+    //.setTexture("js/libs/webgl/textures/bricks2.png"); //TODO
+
     //0.2 Squares
     var squares = [
         new AngularGL.Shape([ //A square
@@ -128,7 +128,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         ]).setTexture("js/libs/angulargl/textures/bricks2.png", 10)
     ];
     var triangle = triangles[0].setColor([0.8, 0.8, 1]);
-    
+
     //0.4 floor
     var floor = new AngularGL.Shape([
         {position: [-1, -0.5,  1]},
@@ -136,16 +136,16 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         {position: [-1, -0.5, -1]},
         {position: [ 1, -0.5, -1]}
     ])
-        .setColor([1, 1, 1]);
-        //.setTexture("js/libs/angulargl/textures/bricks2.png", 20);
-    
+    .setColor([1, 1, 1]);
+    //.setTexture("js/libs/angulargl/textures/bricks2.png", 20);
+
     //1. Declare canvas
     var canvas = new AngularGL.Canvas("canvas", $scope, {
         //ambientColor: "#000000",
         //lightColor: "#ffffff",
         lightDirection: [0, -1, -1]
     });
-    
+
     //2. Add objects
     canvas.addObjects(floor, square);
     //canvas.addObjects(cubeNoElementArray);
@@ -214,4 +214,37 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             canvas.render($scope);
         });
     })();
+}])
+.controller("ThreeJsCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
+    //Cube
+    var cube = new AngularGL.Mesh(
+        new AngularGL.BoxGeometry(1, 1, 1),
+        new AngularGL.MeshBasicMaterial({
+            color: "#fff",
+            wireframe: false
+        })
+    );
+
+    //Light
+    var light = new AngularGL.AmbientLight( 0x404040 ); // soft white light
+    
+    //Camera
+    var camera = new AngularGL.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.z = 2;
+    
+    //Scene
+    var scene = new AngularGL.Scene("canvas");
+    scene.add(cube, light, camera);
+
+    //Animate
+    scene.animate(function() {
+        cube.rotation.y += 0.01;
+    });
+    
+    //TODO:
+    //  - start/stop animation with button
+    //  - wire up ambient and light color with $scope
+    //  - create custom AngularGL.Box/Sphere that wraps THREE.Mesh
+    
+    
 }]);

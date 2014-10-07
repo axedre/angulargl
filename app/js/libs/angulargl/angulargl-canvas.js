@@ -41,7 +41,11 @@ Canvas.prototype.initScope = function(scope, lighting) {
     });
 };
 Canvas.prototype.init = function(elementId) {
-    var options = {alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true};
+    var options = {
+        alpha: false,
+        preserveDrawingBuffer: false,
+        stencil: true
+    };
     try {
         var rctx = document.getElementById(elementId).getContext("webgl", options);
         _.extend(rctx.canvas, {

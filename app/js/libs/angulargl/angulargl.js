@@ -1,22 +1,57 @@
 "use strict";
 
-angular.module("AngularGL", ["AngularGL.Canvas", "AngularGL.Objects", "AngularGL.Buffers", "AngularGL.Shaders"])
-.factory("Canvas", function() {return Canvas;})
+angular.module("AngularGL", [])// ["AngularGL.Canvas", "AngularGL.Objects", "AngularGL.Buffers", "AngularGL.Shaders"])
+/*.factory("Canvas", function() {return Canvas;})
 .factory("Shape", function() {return Shape;})
 .factory("Solid", function() {return Solid;})
 .factory("LightSource", function() {return LightSource;})
-.factory("Utils", function() {return Utils;})
-.factory("AngularGL", ["$injector", AngularGL]);
+.factory("Utils", function() {return Utils;})*/
+.factory("AngularGL", function() {return AngularGL;});
 
-function AngularGL(injector) {
-    var out = {};
-    _.each(angular.module("AngularGL")._invokeQueue, function(item) {
-        var name = item[2][0];
-        if(name === "AngularGL") return;
-        out[name] = injector.get(name);
-    });
-    return out;
-}
+//Overridden constructors
+var AngularGL = {
+    WebGLRenderer: function(domElementId) {
+        var canvas = document.getElementById(domElementId);
+        THREE.WebGLRenderer.call(this, {
+            canvas: canvas
+        });
+        this.setSize(canvas.clientWidth, canvas.clientHeight);
+    },
+    Scene: function(domElementId) {
+        THREE.Scene.call(this);
+        this.renderer = new AngularGL.WebGLRenderer(domElementId);
+    }
+};
+//Defaults
+_.each(THREE, function(value, key) {
+    if(!_.isFunction(value)) {
+        return; //skip properties
+    }
+    if (!AngularGL[key]) {// unless overridden above, create default that only...
+        (function(key) {
+            AngularGL[key] = function() {
+                THREE[key].apply(this, arguments); //...calls super
+            };
+        }(key));
+    }
+    AngularGL[key].prototype = Object.create(THREE[key].prototype);
+    AngularGL[key].prototype.constructor = AngularGL[key];
+});
+//Overridden prototypes
+AngularGL.Scene.prototype.__addObject = function(obj) {
+    if(obj instanceof THREE.Camera) {
+        this.camera = obj;
+    } else {
+        THREE.Scene.prototype.__addObject.call(this, obj);
+    }
+};
+AngularGL.Scene.prototype.animate = function(animateFn) {
+    requestAnimationFrame(this.animate.bind(this, animateFn));
+    animateFn();
+    this.renderer.render(this, this.camera);
+};
+
+//--------------------------------------------------------------------
 
 var Utils = {
     LOG_LEVEL: 1,
