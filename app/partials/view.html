@@ -1,29 +1,29 @@
 <div class="well container">
     <div>
-        <div class="row">
+        <div class="row hidden">
             <div class="col-xs-4">
                 <label class="control-label col-xs-6">
-                    Ambient color
-                    <input type="color" class="form-control" ng-model="canvas.ambientColor"/>
+                    Ambient light color
+                    <input type="color" class="form-control" ng-model="ambientLightColor"/>
                 </label>
                 <label class="control-label col-xs-6">
-                    Light color
-                    <input type="color" class="form-control" ng-model="canvas.lightColor"/>
+                    Directional light color
+                    <input type="color" class="form-control" ng-model="directionalLightColor"/>
                 </label>
             </div>
             <div class="col-xs-4">
                 <div class="row">
                     <label class="control-label col-xs-4">
                         Direction X
-                        <input type="number" class="form-control" ng-model="canvas.lightDirection[0]"/>
+                        <input type="number" class="form-control" ng-model="directionalLightPosition[0]"/>
                     </label>
                     <label class="control-label col-xs-4">
                         Direction Y
-                        <input type="number" class="form-control" ng-model="canvas.lightDirection[1]"/>
+                        <input type="number" class="form-control" ng-model="directionalLightPosition[1]"/>
                     </label>
                     <label class="control-label col-xs-4">
                         Direction Z
-                        <input type="number" class="form-control" ng-model="canvas.lightDirection[2]"/>
+                        <input type="number" class="form-control" ng-model="directionalLightPosition[2]"/>
                     </label>
                 </div>
             </div>

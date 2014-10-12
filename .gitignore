@@ -1,3 +1,4 @@
+**/*.old
 /app/.sass-cache
 /app/js/libs/angulargl/gl-matrix-min.js
 /node_modules

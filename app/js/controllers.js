@@ -1,250 +1,193 @@
 "use strict";
 
 angular.module("AngularGLApp.controllers", ["AngularGL"])
-.controller("MainCtrl", ["$http", "$scope", "$timeout", "AngularGL", function($http, $scope, $timeout, AngularGL) {
+.controller("MainCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
+    $scope.ambientLightColor = "#ff0000";
+    $scope.directionalLightColor = "#ff00ff";
+    $scope.directionalLightPosition = [0, 1, 0];
 
-    //0. Declare objects
-
-    //0.1 Cubes
-    var elementArray = [ //Element array
-        0,  1,  2,      0,  2,  3,    //Front
-        4,  5,  6,      4,  6,  7,    //Back
-        8,  9,  10,     8,  10, 11,   //Top
-        12, 13, 14,     12, 14, 15,   //Bottom
-        16, 17, 18,     16, 18, 19,   //Right
-        20, 21, 22,     20, 22, 23    //Left
-    ];
-    var cubeWithElementArray = new AngularGL.Solid([ //A cube
-        [ //Front face
-            {position: [-1.0, -1.0,  1.0], color: [0.92, 0.57, 0.22]}, //A vertex
-            {position: [ 1.0, -1.0,  1.0], color: [0.92, 0.57, 0.22]},
-            {position: [ 1.0,  1.0,  1.0], color: [0.92, 0.57, 0.22]},
-            {position: [-1.0,  1.0,  1.0], color: [0.92, 1.07, 0.22]}
-        ], [ //Back face
-            {position: [-1.0, -1.0, -1.0], color: [1, 0, 0]},
-            {position: [-1.0,  1.0, -1.0], color: [1, 0, 0]},
-            {position: [ 1.0,  1.0, -1.0], color: [1, 0, 0]},
-            {position: [ 1.0, -1.0, -1.0], color: [1, 0, 0]}
-        ], [ //Top face
-            {position: [-1.0,  1.0, -1.0], color: [0, 0, 1]},
-            {position: [-1.0,  1.0,  1.0], color: [0, 0, 1]},
-            {position: [ 1.0,  1.0,  1.0], color: [0, 0, 1]},
-            {position: [ 1.0,  1.0, -1.0], color: [0, 0, 1]}
-        ], [ //Bottom face
-            {position: [-1.0, -1.0, -1.0], color: [0, 1, 1]},
-            {position: [ 1.0, -1.0, -1.0], color: [0, 1, 1]},
-            {position: [ 1.0, -1.0,  1.0], color: [0, 1, 1]},
-            {position: [-1.0, -1.0,  1.0], color: [0, 1, 1]}
-        ], [ //Right face
-            {position: [1.0, -1.0, -1.0], color: [0, 1, 0]},
-            {position: [1.0,  1.0, -1.0], color: [0, 1, 0]},
-            {position: [1.0,  1.0,  1.0], color: [0, 1, 0]},
-            {position: [1.0, -1.0,  1.0], color: [0, 1, 0]}
-        ], [ //Left face
-            {position: [-1.0, -1.0, -1.0], color: [1, 0, 1]},
-            {position: [-1.0, -1.0,  1.0], color: [1, 0, 1]},
-            {position: [-1.0,  1.0,  1.0], color: [1, 0, 1]},
-            {position: [-1.0,  1.0, -1.0], color: [1, 0, 1]}
-        ]
-    ])
-    .setElementArray(elementArray)
-    .setColor([0.8, 0.8, 1]);
-    //.setTexture("js/libs/angulargl/textures/bricks1.png"); //TODO
-    var cubeNoElementArray = new AngularGL.Solid([ //Another cube, but no element array
-        [ //Front face
-            {position: [-0.5, -0.5, 0.5]},
-            {position: [ 0.5, -0.5, 0.5]},
-            {position: [-0.5,  0.5, 0.5]},
-            {position: [ 0.5,  0.5, 0.5]}
-        ], [ //Back face
-            {position: [-0.5, -0.5, -0.5]},
-            {position: [ 0.5, -0.5, -0.5]},
-            {position: [-0.5,  0.5, -0.5]},
-            {position: [ 0.5,  0.5, -0.5]}
-        ], [ //Top face
-            {position: [-0.5, 0.5,  0.5]},
-            {position: [ 0.5, 0.5,  0.5]},
-            {position: [-0.5, 0.5, -0.5]},
-            {position: [ 0.5, 0.5, -0.5]}
-        ], [ //Bottom face
-            {position: [-0.5, -0.5,  0.5]},
-            {position: [ 0.5, -0.5,  0.5]},
-            {position: [-0.5, -0.5, -0.5]},
-            {position: [ 0.5, -0.5, -0.5]}
-        ], [ //Right face
-            {position: [0.5, -0.5,  0.5]},
-            {position: [0.5, -0.5, -0.5]},
-            {position: [0.5,  0.5,  0.5]},
-            {position: [0.5,  0.5, -0.5]}
-        ], [ //Left face
-            {position: [-0.5, -0.5,  0.5]},
-            {position: [-0.5, -0.5, -0.5]},
-            {position: [-0.5,  0.5,  0.5]},
-            {position: [-0.5,  0.5, -0.5]}
-        ]
-    ])
-    .setColor([0.8, 0.8, 1]);
-    //.setTexture("js/libs/webgl/textures/bricks2.png"); //TODO
-
-    //0.2 Squares
-    var squares = [
-        new AngularGL.Shape([ //A square
-            {position: [-0.5, -0.5]},
-            {position: [ 0.5, -0.5]},
-            {position: [-0.5,  0.5]},
-            {position: [ 0.5,  0.5]}
-        ]).setColor([1, 0, 0]),
-        new AngularGL.Shape([ //Same square, translated-x by 1
-            {position: [0.5, -0.5]},
-            {position: [1.5, -0.5]},
-            {position: [0.5,  0.5]},
-            {position: [1.5,  0.5]}
-        ]).setColor([1, 0, 0]),
-        new AngularGL.Shape([ //Same square, translated-y by 1
-            {position: [-0.5, 0.5]},
-            {position: [ 0.5, 0.5]},
-            {position: [-0.5, 1.5]},
-            {position: [ 0.5, 1.5]}
-        ]).setColor([1, 0, 0]),
-        new AngularGL.Shape([ //Same square, translated-z by 1
-            {position: [-0.5, -0.5, 1.0]},
-            {position: [ 0.5, -0.5, 1.0]},
-            {position: [-0.5,  0.5, 1.0]},
-            {position: [ 0.5,  0.5, 1.0]}
-        ]).setColor([1, 0, 0])
-    ];
-    var square = squares[0].setColor([1, 0, 0]);
-    //0.3 triangles
-    var triangles = [
-        new AngularGL.Shape([ //A triangle
-            {position: [-0.5, -0.5, 1], color: [0.5, 0, 0]},
-            {position: [0.5, -0.5, 1], color: [0.5, 0, 0]},
-            {position: [0, 0.5, 1], color: [0.5, 0, 0]}
-        ]),
-        new AngularGL.Shape([ //Another triangle
-            {position: [1, -1.0], color: [0, 0, 1.0]},
-            {position: [2, -1.0], color: [0, 0, 1.0]},
-            {position: [1.5, 1.0], color: [0, 0, 1.0]}
-        ]).setTexture("js/libs/angulargl/textures/bricks2.png", 10)
-    ];
-    var triangle = triangles[0].setColor([0.8, 0.8, 1]);
-
-    //0.4 floor
-    var floor = new AngularGL.Shape([
-        {position: [-1, -0.5,  1]},
-        {position: [ 1, -0.5,  1]},
-        {position: [-1, -0.5, -1]},
-        {position: [ 1, -0.5, -1]}
-    ])
-    .setColor([1, 1, 1]);
-    //.setTexture("js/libs/angulargl/textures/bricks2.png", 20);
-
-    //1. Declare canvas
-    var canvas = new AngularGL.Canvas("canvas", $scope, {
-        //ambientColor: "#000000",
-        //lightColor: "#ffffff",
-        lightDirection: [0, -1, -1]
-    });
-
-    //2. Add objects
-    canvas.addObjects(floor, square);
-    //canvas.addObjects(cubeNoElementArray);
-    //canvas.addObjects(squares[0]);
-    //canvas.addObjects(triangle);
-
-    //3. Add shaders
-    canvas.addShaders({
-        path: "js/libs/angulargl/shaders/",
-        fragmentShader: "fragmentMixed.c",
-        vertexShader: "vertex.c"
-    });
-
-    //4. Attach event listeners
-    canvas.on({
-        keydown: function(e) {
-            switch(e.keyCode) {
-                case 37: //Left cursor key
-                    $scope.ry--;
-                    break;
-                case 38: //Up cursor key
-                    $scope.rx--;
-                    break;
-                case 39: //Right cursor key
-                    $scope.ry++;
-                    break;
-                case 40: //Down cursor key
-                    $scope.rx++;
-                    break;
-            }
-        },
-        mousewheel: function(e) {
-            if(e.wheelDelta >= 0) {
-                $scope.z++;
-            } else {
-                $scope.z--;
-            }
-        }
-    });
-
-    //5. Animation
-    (function() {
-        //Define an animation function (a function that modifies and returns the model)
-        //TODO: don't pass whole scope but only object (model) containgin required properties
-        var animateFn = function() {
-            //Update scope
-            $scope.ry = ($scope.ry - 1) % 360; //degrees
-            return $scope;
-        };
-
-        //Toggle animate
-        $scope.$watch("play", function(p) {
-            canvas.isAnimating = p;
-            if(p) {
-                //TODO: use async.forever or something...
-                async.whilst(function() {
-                    return $scope.play;
-                }, function(cb) {
-                    canvas.animate(animateFn, cb);
-                }, _.noop);
-            }
-        });
-
-        //Render each time $scope is changed by user events
-        $scope.$watch("x+y+z+rx+ry+rz", function() {
-            canvas.render($scope);
-        });
-    })();
-}])
-.controller("ThreeJsCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
-    //Cube
-    var cube = new AngularGL.Mesh(
-        new AngularGL.BoxGeometry(1, 1, 1),
-        new AngularGL.MeshBasicMaterial({
-            color: "#fff",
-            wireframe: false
-        })
-    );
-
-    //Light
-    var light = new AngularGL.AmbientLight( 0x404040 ); // soft white light
-    
-    //Camera
-    var camera = new AngularGL.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.z = 2;
-    
     //Scene
     var scene = new AngularGL.Scene("canvas");
-    scene.add(cube, light, camera);
+    
+    //Cube
+    var cube = new AngularGL.Mesh(
+        new AngularGL.BoxGeometry(1, 1, 1, 32, 32, 32),
+        new AngularGL.MeshPhongMaterial({
+            color: "#29ad33"
+        })
+    );
+    cube.position.y = 0;
+    cube.rotation.y = 0.1
 
-    //Animate
-    scene.animate(function() {
-        cube.rotation.y += 0.01;
+    //Sphere 1
+    var sphere01 = new AngularGL.Mesh(
+        new AngularGL.SphereGeometry(0.5, 32, 32),
+        new AngularGL.MeshPhongMaterial({
+            color: "#29ad33"
+        })
+    );
+    sphere01.position.x = -0.75;
+    
+    //Sphere 2
+    var sphere02 = new AngularGL.Mesh(
+        new AngularGL.SphereGeometry(0.5, 32, 32),
+        new AngularGL.MeshPhongMaterial({
+            color: 0x8888ff
+        })
+    );
+    sphere02.position.x = 0.75;
+
+    //Floor
+    var floor = new AngularGL.Mesh(
+        new AngularGL.PlaneGeometry(10, 10),
+        new AngularGL.MeshBasicMaterial({
+            color: "silver",
+            side: THREE.DoubleSide
+        })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.5;
+
+    //Camera
+    var camera = new AngularGL.PerspectiveCamera(75, 1, 0.1, 1000);
+    camera.position.z = 3;
+    camera.position.y = 0.75;
+
+    //Light
+    var light = new AngularGL.PointLight(0xffffff);
+    light.position.set(5, 5, 5);
+
+    //Add objects and run scene
+    scene.add(sphere01, sphere02, floor, camera, light);
+    scene.run();
+
+    //Animation
+    var animation = new AngularGL.Animation(scene, function() {
+        cube.rotation.y += 2 * Math.PI / 100; //approx 360° (2pi rad) in 5" (100f @20fps)
+    });
+
+    //Toggle animation
+    $scope.$watch("play", function(p) {
+        animation.toggle(p);
     });
     
     //TODO:
-    //  - start/stop animation with button
-    //  - wire up ambient and light color with $scope
-    //  - create custom AngularGL.Box/Sphere that wraps THREE.Mesh
+    //- higher-level wrappers for Plane, Cube, Sphere, etc.
+    //- scene.add to take arrays of objects
+
+}])
+.controller("ThreeJsCtrl", [function() {
+    var container, scene, camera, renderer, controls, stats;
+    var sphere, cube, floor;
+
+    //Scene
+    scene = new THREE.Scene();
+
+    //Camera
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.z = 3;
+    camera.position.y = 0.75;
+
+    //Renderer
+    var canvas = document.getElementById("canvas");
+    renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        canvas: canvas
+    });
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     
+    //Controls
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    //Light
+    var light = new THREE.PointLight(0xffffff);
+    light.position.set(5, 5, 5);
+    //scene.add(light);
+    var ambientLight = new AngularGL.AmbientLight(0x111111);
+    //scene.add(ambientLight);
+
+    //Sphere	
+    var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32); 
+    var sphereMaterial = new THREE.MeshPhongMaterial({color: 0x8888ff}); 
+    sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.position.set(1.5, 0, 0);
+    //scene.add(sphere);
+
+    //Cube
+    var cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+    /*var cubeMaterialArray = [
+        new AngularGL.MeshLambertMaterial({color: 0xff3333}),
+        new AngularGL.MeshLambertMaterial({color: 0xff8800}),
+        new AngularGL.MeshLambertMaterial({color: 0xffff33}),
+        new AngularGL.MeshLambertMaterial({color: 0x33ff33}),
+        new AngularGL.MeshLambertMaterial({color: 0x3333ff}),
+        new AngularGL.MeshLambertMaterial({color: 0x8833ff})
+    ];
+    var cubeMaterials = new AngularGL.MeshFaceMaterial(cubeMaterialArray);*/
+    var cubeMaterial = new THREE.MeshPhongMaterial({color: "#29ad33"});
+    // using THREE.MeshFaceMaterial() in the constructor below
+    // causes the mesh to use the materials stored in the geometry
+    cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    cube.position.y = 0;
+    //scene.add(cube);		
+
+    //Axes
+    //var axes = new THREE.AxisHelper(100);
+    //scene.add(axes);
+
+    //Floor
+    // note: 4x4 checkboard pattern scaled so that each square is 25 by 25 pixels.
+    /*var floorTexture = new THREE.ImageUtils.loadTexture( 'images/checkerboard.jpg' );
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+        floorTexture.repeat.set( 10, 10 );*/
+    // DoubleSide: render texture on both sides of mesh
+    var floorGeometry = new THREE.PlaneGeometry(10, 10);
+    var floorMaterial = new THREE.MeshBasicMaterial({
+        color: "silver",
+        wireframe: false
+    });
+    floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.5;
+    //scene.add(floor);
+
+    /*
+    //Sky
+    // recommend either a skybox or fog effect (can't use both at the same time) 
+    // without one of these, the scene's background color is determined by webpage background
+    // make sure the camera's "far" value is large enough so that it will render the skyBox!
+    //var skyBoxGeometry = new THREE.BoxGeometry(10000, 10000, 10000);
+    // BackSide: render faces from inside of the cube, instead of from outside (default).
+    //var skyBoxMaterial = new THREE.MeshBasicMaterial({color: 0x9999ff, side: THREE.BackSide});
+    //var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
+    // scene.add(skyBox);
+    // fog must be added to scene before first render
+    //scene.fog = new THREE.FogExp2(0x9999ff, 0.00025);
+    */
     
+    scene.add.apply(scene, [
+        cube,
+        light,
+        camera,
+        sphere,
+        floor
+    ]);
+    
+    function animate() {
+        requestAnimationFrame( animate );
+        render();		
+        update();
+    }
+
+    function update() {
+        controls.update();
+        //stats.update();
+    }
+
+    function render() {	
+        renderer.render(scene, camera);
+    }
+    
+    animate();
+
 }]);

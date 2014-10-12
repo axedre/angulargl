@@ -1,11 +1,6 @@
 "use strict";
 
-angular.module("AngularGL", [])// ["AngularGL.Canvas", "AngularGL.Objects", "AngularGL.Buffers", "AngularGL.Shaders"])
-/*.factory("Canvas", function() {return Canvas;})
-.factory("Shape", function() {return Shape;})
-.factory("Solid", function() {return Solid;})
-.factory("LightSource", function() {return LightSource;})
-.factory("Utils", function() {return Utils;})*/
+angular.module("AngularGL", [])
 .factory("AngularGL", function() {return AngularGL;});
 
 //Overridden constructors
@@ -13,90 +8,77 @@ var AngularGL = {
     WebGLRenderer: function(domElementId) {
         var canvas = document.getElementById(domElementId);
         THREE.WebGLRenderer.call(this, {
-            canvas: canvas
+            canvas: canvas,
+            antialias: true
         });
         this.setSize(canvas.clientWidth, canvas.clientHeight);
     },
     Scene: function(domElementId) {
         THREE.Scene.call(this);
         this.renderer = new AngularGL.WebGLRenderer(domElementId);
+        this.loop = new AngularGL.Animation(this, function() {});
+    },
+    Animation: function(scene, animateFn) {
+        this.id;
+        this.animateFn = animateFn || function() {};
+        this.scene = scene;
+        this.animate = function() {
+            this.id = requestAnimationFrame(this.animate.bind(this));
+            this.animateFn();
+            this.scene.render();
+        };
+        this.start = this.animate;
+        this.stop = function() {
+            cancelAnimationFrame(this.id);
+            this.id = null;
+        };
+        this.toggle = function(p) {
+            this.id && this.stop() || p && this.start();
+        }
     }
 };
 //Defaults
-_.each(THREE, function(value, key) {
-    if(!_.isFunction(value)) {
-        return; //skip properties
+for(var prop in THREE) {
+    if(_.isFunction(THREE[prop])) {
+        if (!AngularGL[prop]) {// unless overridden above, create default that only...
+            (function(prop) {
+                AngularGL[prop] = function() {
+                    THREE[prop].apply(this, arguments); //...calls super
+                };
+            }(prop));
+        }
+        AngularGL[prop].prototype = Object.create(THREE[prop].prototype);
+        AngularGL[prop].prototype.constructor = AngularGL[prop];
+    } else {
+        AngularGL[prop] = THREE[prop];
     }
-    if (!AngularGL[key]) {// unless overridden above, create default that only...
-        (function(key) {
-            AngularGL[key] = function() {
-                THREE[key].apply(this, arguments); //...calls super
-            };
-        }(key));
-    }
-    AngularGL[key].prototype = Object.create(THREE[key].prototype);
-    AngularGL[key].prototype.constructor = AngularGL[key];
-});
+}
 //Overridden prototypes
 AngularGL.Scene.prototype.__addObject = function(obj) {
     if(obj instanceof THREE.Camera) {
         this.camera = obj;
+        var canvas = this.renderer.domElement;
+        this.camera.aspect = canvas.clientWidth/canvas.clientHeight;
+        this.camera.updateProjectionMatrix();
+        //Once camera is added, orbit controls can be bound to it
+        this.controls = new THREE.OrbitControls(obj, canvas);
     } else {
         THREE.Scene.prototype.__addObject.call(this, obj);
     }
 };
-AngularGL.Scene.prototype.animate = function(animateFn) {
-    requestAnimationFrame(this.animate.bind(this, animateFn));
-    animateFn();
+AngularGL.Scene.prototype.render = function() {
     this.renderer.render(this, this.camera);
+    this.controls.update();
+};
+AngularGL.Scene.prototype.run = function() {
+    if(!(this.camera && this.camera instanceof THREE.Camera)) {
+        console.error("At least one Camera object is required to render scene");
+        return;
+    }
+    this.loop.start();
 };
 
 //--------------------------------------------------------------------
-
-var Utils = {
-    LOG_LEVEL: 1,
-    LOG_COLLAPSED: false,
-    hexchars: "0123456789abcdef",
-    requestAnimFrame: function(cb) {
-        /*(window.requestAnimationFrame ||
-         window.webkitRequestAnimationFrame ||
-         window.mozRequestAnimationFrame ||
-         window.oRequestAnimationFrame ||
-         window.msRequestAnimationFrame ||
-         function(cb) {
-            window.setTimeout(cb, 1000/60);
-        })(cb);*/
-        Utils.timeout(cb, 1000/60);
-    },
-    setMatrixUniforms: function(rctx, program, matrices) {
-        var pMatrix = matrices[0];
-        var mvMatrix = matrices[1];
-        var normalMatrix = mat3.create();
-
-        rctx.uniformMatrix4fv(program.pMatrixUniform, false, pMatrix);
-        rctx.uniformMatrix4fv(program.mvMatrixUniform, false, mvMatrix);
-        mat4.toInverseMat3(mvMatrix, normalMatrix);
-        mat3.transpose(normalMatrix);
-        rctx.uniformMatrix3fv(program.nMatrixUniform, false, normalMatrix);
-    },
-    degToRad: function(degrees) {
-        return degrees * Math.PI / 180;
-    },
-    vecToHex: function(colorVector) {
-        return _.reduce(colorVector, function(hex, channel) {
-            return hex + _.toHex(channel);
-        }, "#");
-    },
-    hexToVec: function(hexColor) {
-        return _.map(hexColor.match(/(\w{2})/g), function(channel) {
-            return _.toDec(channel);
-        });
-    }
-};
-//Inject $timeout service in Utils object
-angular.injector(["ng"]).invoke(["$timeout", function(timeout) {
-    Utils.timeout = timeout;
-}]);
 
 _.mixin(_.string.exports());
 _.mixin({
@@ -156,20 +138,3 @@ _.mixin({
         }).value();
     }
 });
-
-//Logging
-var consoleMethods = ["log", "debug", "info", "warn", "group", "groupEnd"/*, "time", "timeEnd"*/];
-_.each(consoleMethods, function(method) {
-    //Save reference to original method
-    console[_.sprintf("_%s", method)] = console[method];
-});
-if(!Utils.LOG_LEVEL) {
-    _.each(consoleMethods, function(method) {
-        console[method] = _.noop;
-    });
-}
-//Override console.group
-console.__group__ = console.group;
-console.group = function() {
-    console[Utils.LOG_COLLAPSED? "groupCollapsed" : "__group__"].apply(console, arguments);
-}
