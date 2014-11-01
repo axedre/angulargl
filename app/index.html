@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" ng-app="AngularGLApp">
+<html lang="en" ng-app="AngularGLApp" ng-controller="RootCtrl">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -36,8 +36,10 @@
                         </ul></li>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
-                    <li><a href="#/threejs">three.js</a></li>
-                    <li><a href="#/angulargl">AngularGL</a></li>
+                    <li ng-class="{ active: activePath=='prototype01' }"><a href="#/prototype01">Prototype 1</a></li>
+                    <li ng-class="{ active: activePath=='prototype02' }"><a href="#/prototype02">Prototype 2</a></li>
+                    <li ng-class="{ active: activePath=='prototype03' }"><a href="#/prototype03">Prototype 3</a></li>
+                    <li ng-class="{ active: activePath=='threeJsExample' }"><a href="#/threeJsExample">Three.js Example</a></li>
                     <!--
                         <li><a href="#/navbar-static">Static top</a></li>
                         <li><a href="#/navbar-fixed">Fixed top</a></li>
@@ -51,13 +53,13 @@
         <script src="async.js"></script>
         <script src="js/libs/threejs/three.js"></script>
         <script src="js/libs/threejs/OrbitControls.js"></script>
-        <script src="js/libs/ui-bootstrap-tpls-0.11.0.min.js"></script>
+        <script src="js/libs/ui-bootstrap-tpls-0.11.2.min.js"></script>
         <script src="js/libs/moment-with-langs.min.js"></script>
         <script src="js/libs/underscore-min.js"></script>
         <script src="js/libs/underscore.string.min.js"></script>
-        <script src="js/libs/angulargl/glMatrix-0.9.5.min.js"></script>
         <script src="js/libs/angulargl/angulargl.js"></script>
         <!--
+        <script src="js/libs/angulargl/glMatrix-0.9.5.min.js"></script>
         <script src="js/libs/threejs/three.min.js"></script>
         <script src="js/libs/angulargl/angulargl-canvas.js"></script>
         <script src="js/libs/angulargl/angulargl-objects.js"></script>
