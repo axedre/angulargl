@@ -61,16 +61,11 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 .controller("Prototype02Ctrl", ["$scope", "AngularGL", function($scope, AngularGL) {
     //var texture = AngularGL.ImageUtils.loadTexture('img/textures/2294472375_24a3b8ef46_o.jpg', new THREE.UVMapping(), function () {
     //Scene
-    var scene = new AngularGL.Scene("canvas", $scope, true);
+    var scene = new AngularGL.Scene("canvas", $scope);
 
-    /*var mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(500, 60, 40),
-        new THREE.MeshBasicMaterial({
-            map: texture
-        })
-    );
-    mesh.scale.x = -1;
-    scene.add( mesh );*/
+    //Floor
+    var floor = new AngularGL.Plane(300, "#151515");
+    scene.add(floor);
 
     //Axis Helper
     var axisHelper = new AngularGL.AxisHelper(150);
@@ -80,9 +75,11 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     var camera01 = new AngularGL.PerspectiveCamera(45, 1, 1, 1000);
     //camera01.position.set(-6.8, 1, 7);
     //camera01.position.set(-26.45, 12.45, 36.25);
-    camera01.position.set(30.65, 18.80, 66.75);
+    //camera01.position.set(30.65, 18.80, 66.75);
+    //camera01.position.set(-94.35, 7.70, 75.35);
+    camera01.position.set(-29, 9, 68.5);
     scene.add(camera01);
-    scene.controls.target.set(30.65, 18.80, 0);
+    scene.controls.target.set(60, 8, 0);
 
     //Primary camera helper
     //var camera01_helper = new AngularGL.CameraHelper(camera01);
@@ -100,70 +97,92 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     //scene.controls.target.set(35, 15, -6);*/
 
     //Cube
-    var cube = new AngularGL.Cube(10, "#29ad33");
-    //cube.material = new AngularGL.MeshBasicMaterial({color: "#29ad33"});
+    var cube = new AngularGL.Cube(8, "#29ad33");
+    cube.material = new AngularGL.MeshPhongMaterial({color: "#29ad33"});
+    //Cube point light - temporary
+    cube.add(new AngularGL.PointLight(0xffffff, 1))
+    //Cube normals
+    var cubeNormalsHelper = new THREE.FaceNormalsHelper(cube, 2, 0xffff00);
+    cube.add(cubeNormalsHelper);
     //cube.position.set(120, 25, 5);
-    cube.position.set(26, 25, 10);
-    //cube.position.set(120, 5, 1);
+    //cube.position.set(26, 25, 10);
+    cube.position.set(60, 4, 1);
     scene.add(cube);
-
-    //Light
-    var lightTarget = new AngularGL.Object3D();
-    lightTarget.position.set(50, 0, -5);
-
-    var light = new AngularGL.SpotLight(0xffffff);
-    //light.position.set(50, 20, -5);
-    light.shadowDarkness = 0.5;
-    light.shadowCameraNear = 1;
-    light.shadowCameraFar = 20;
-    light.shadowCameraVisible = true;
-    light.position.y = 20;
-    light.onlyShadow = true;
-    light.angle = Math.PI/2;
-    light.target = lightTarget;
-    light.add(new AngularGL.PointLight(0xffffff, 0.5));
-    
-    lightTarget.add(light);
-    scene.add(lightTarget);
-
-    //Floor
-    var floor = new AngularGL.Plane(300, "silver");
-    scene.add(floor);
 
     //Wall
     var wall = new AngularGL.Cube(100, "#6a6a6a");
     /*wall.material = new AngularGL.MeshBasicMaterial({
-            color: "#e2e25a"
-        });*/
+        color: "#e2e25a"
+    });*/
     wall.position.set(0, 50, -15);
     wall.scale.z = 0.1;
     scene.add(wall);
-
+    
     //Balcony
-    var cubeCamera = new AngularGL.CubeCamera(1, 1000, 1024);
+    /*var cubeCamera = new AngularGL.CubeCamera(1, 1000, 1024);
     cubeCamera.position.set(30, 25, -6.25);
-    scene.add(cubeCamera);
-
+    scene.add(cubeCamera);*/
+    var balconies = [];
     var balcony = new AngularGL.Mesh(
         new AngularGL.BoxGeometry(10, 5, 7.5),
-        new AngularGL.MeshBasicMaterial({
-            envMap: cubeCamera.renderTarget
-        })
-    );
+        new AngularGL.MeshPhongMaterial({
+            //envMap: cubeCamera.renderTarget
+            color: "gray"
+        }));
     balcony.position.set(30, 25, -6.25);
     //balcony.scale.x = 2;
     //balcony.scale.z = 1.5;
     //balcony.receiveShadow = false;
-    scene.add(balcony);
+    balconies.push(balcony);
+    scene.add(balconies);
+
+    //Lamp posts
+    /* TODO:
+    AngularGL.Object3D.load("objects/lamp.js", function(lamp) {
+        //console.log(lamp);
+        scene.add(lamp);
+    });
+    */
+
+    //Post
+    var posts = [];
+    for(var i=50; i<=50; i+=50) {
+        var post = new AngularGL.Mesh(
+            new AngularGL.CylinderGeometry(0.5, 0.5, 18, 360),
+            new AngularGL.MeshPhongMaterial({
+                color: "silver"//"#121212"
+            })
+        );
+        post.position.set(i, 9, 25);
+        //Glass
+        var glass = post.clone();
+        glass.material = new AngularGL.MeshBasicMaterial({
+            color: "#0ff",
+            transparent: true,
+            opacity: 0.5,
+        });
+        glass.scale.y = 1/9;
+        glass.position.set(0, 10, 0);
+        //Cap
+        var cap = post.clone();
+        cap.scale.y = 1/36;
+        cap.position.set(0, 11.25, 0);
+        //Lamp
+        glass.add(new AngularGL.PointLight(0xffffff, 0.5));
+        post.add(glass);
+        post.add(cap);
+        posts.push(post);
+    }
+    scene.add(posts);
 
     //Run scene
     scene.run();
 
     //Animation
     var animation = new AngularGL.Animation(scene, function() {
-        if(cube.position.x > -30) {
+        if(cube.position.x > 0) {
             //cube.rotation.y += 2 * Math.PI / 100; //approx 360° (2pi rad) in 5" (100f @20fps)
-            cube.position.x -= 5;
+            cube.position.x -= 1;
         } else {
             if(this.loop) {
                 this.prepareFn();
@@ -173,27 +192,28 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             }
         }
     }, function() {
-        cube.position.x = 120;
+        cube.position.x = 60;
     });
 
     //Toggle animation
     $scope.$watch("play", function(p) {
         animation.toggle(p);
     });
-    
+
     //Toggle loop
+    $scope.loop = true;
     $scope.$watch("loop", function(l) {
         animation.loop = l;
     });
 
     $scope.reset = animation.reset.bind(animation);
     $scope.step = animation.step.bind(animation);
-    
+
     $scope.getCameraPosition = function() {
         var pos = $scope.camera.position;
         console.log("%s, %s, %s", pos.x.toFixed(2), pos.y.toFixed(2), pos.z.toFixed(2));
     };
-    
+
     //TODO:
     //- slider to modify balcony's reflectivity
 

@@ -1,7 +1,11 @@
 "use strict";
 
 angular.module("AngularGL", [])
-.factory("AngularGL", function() {return AngularGL;});
+.factory("AngularGL", ["$http", "$q", function(http, q) {
+    AngularGL.http = http;
+    AngularGL.q = q;
+    return AngularGL;
+}]);
 
 //Overridden constructors
 var AngularGL = {
@@ -171,7 +175,7 @@ AngularGL.Plane.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Plane.prototype.constructor = AngularGL.Plane;
 AngularGL.Cube = function(side, color, wireframe) {
     AngularGL.Mesh.apply(this, [
-        new AngularGL.BoxGeometry(side, side, side, 32, 32, 32),
+        new AngularGL.BoxGeometry(side, side, side, 1, 1, 1),
         new AngularGL.MeshPhongMaterial({
             color: color || 0xffffff,
             wireframe: !!wireframe
@@ -190,6 +194,16 @@ AngularGL.Sphere = function(radius, color) {
 };
 AngularGL.Sphere.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Sphere.prototype.constructor = AngularGL.Sphere;
+//New static methods
+/*AngularGL.Object3D.load = function(src, cb) {
+    AngularGL.http.get(src).success(function(data) {
+        //var O = eval(data);
+        cb(new (eval(data))());
+        //console.log(obj);
+    }).error(function(err) {
+        console.warn(err);
+    });
+};*/
 
 //--------------------------------------------------------------------
 
