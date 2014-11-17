@@ -12,5 +12,6 @@ angular.module("AngularGLApp", [
     $routeProvider.when("/prototype02", {templateUrl: "partials/view.html", controller: "Prototype02Ctrl"});
     $routeProvider.when("/prototype03", {templateUrl: "partials/view.html", controller: "Prototype03Ctrl"});
     $routeProvider.when("/threeJsExample", {templateUrl: "partials/view.html", controller: "ThreeJsExampleCtrl"});
+    $routeProvider.when("/customShader", {templateUrl: "partials/view.html", controller: "CustomShaderCtrl"});
     $routeProvider.otherwise({redirectTo: "/"});
 }]);

@@ -9,9 +9,10 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
     parameters = parameters || {};
 
-    var canvas = document.createElement( 'canvas' );
+    var canvas = parameters.canvas !== undefined ? parameters.canvas : document.createElement( 'canvas' );
     var context = canvas.getContext( '2d', {
-        alpha: parameters.alpha === true
+        alpha: parameters.alpha === true,
+        antialias: !!parameters.antialias
     } );
 
     var maxRecursionDepth = 3;
@@ -326,7 +327,6 @@ THREE.RaytracingRenderer = function ( parameters ) {
                 var weight = fresnel;
 
                 var zColor = tmpColor[ recursionDepth ];
-
                 spawnRay( point, reflectionVector, zColor, recursionDepth + 1 );
 
                 if ( material.specular !== undefined ) {
@@ -456,7 +456,10 @@ THREE.RaytracingRenderer = function ( parameters ) {
                 blockX = 0;
                 blockY += blockSize;
 
-                if ( blockY >= canvasHeight ) return;
+                if ( blockY >= canvasHeight ) {
+                    console.timeEnd("render");
+                    return;
+                }
 
             }
 
@@ -528,6 +531,7 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
         } );
 
+        console.time("render");
         renderBlock( 0, 0 );
 
     };

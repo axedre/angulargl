@@ -11,7 +11,10 @@ angular.module("AngularGL", [])
 var AngularGL = {
     WebGLRenderer: function(domElementId, alpha) {
         var canvas = document.getElementById(domElementId);
-        THREE.WebGLRenderer.call(this, {
+        var renderer =
+            //"RaytracingRenderer";
+            "WebGLRenderer";
+        THREE[renderer].call(this, {
             canvas: canvas,
             antialias: true,
             alpha: alpha
@@ -68,21 +71,34 @@ var AngularGL = {
         this.toggle = function(p) {
             this.id && this.stop() || p && this.start();
         };
-        this.reset = this.prepareFn;
+        this.reset = function() {
+            this.prepareFn();
+            if(!this.id) {
+                this.scene.render();
+            }
+        }
     },
     Mesh: function() {
         THREE.Mesh.apply(this, arguments);
+        this.material.specular = this.material.color;
         this.castShadow = true;
         this.receiveShadow = true;
+    },
+    MeshPhongMaterial: function(parameters) {
+        THREE.MeshPhongMaterial.call(this, _.extend(AngularGL.DEFAULT_MATERIAL_PARAMETERS, parameters));
+    },
+    AmbientLight: function(hex) {
+        hex = hex || 0xffffff;
+        THREE.AmbientLight.call(this, hex);
+    },
+    PointLight: function(hex, intensity, distance) {
+        hex = hex || 0xffffff;
+        THREE.PointLight.call(this, hex, intensity, distance);
     },
     SpotLight: function() {
         THREE.SpotLight.apply(this, arguments);
         this.castShadow = true;
-    }/*,
-    PerspectiveCamera: function() {
-        //TODO: attach controls to camera using deferred object to sense scene
-        //this.
-    }*/
+    }
 };
 //Defaults
 for(var prop in THREE) {
@@ -101,7 +117,7 @@ for(var prop in THREE) {
     }
 }
 //Overridden or new prototypes
-AngularGL.Scene.prototype.add = function(obj) {
+AngularGL.Scene.prototype.add = function() {
     var args = _.flatten(arguments);
     for(var i=0; i<args.length; i++) {
         this.addObject(args[i]);
@@ -160,40 +176,66 @@ Object.defineProperty(AngularGL.Animation.prototype, "running", {
     }
 });
 //New classes or subclasses
-AngularGL.Plane = function(side, color) {
-    AngularGL.Mesh.apply(this, [
-        new AngularGL.PlaneBufferGeometry(side, side),
-        new AngularGL.MeshPhongMaterial({
-            color: color || 0xffffff,
-            side: AngularGL.DoubleSide,
-        })
-    ]);
+AngularGL.Plane = function(parameters) {
+    var side = parameters.side || 100;
+    var geometry = new AngularGL.PlaneBufferGeometry(side, side);
+    var material = new AngularGL.MeshPhongMaterial(parameters);
+    AngularGL.Mesh.call(this, geometry, material);
     this.rotation.x = -Math.PI / 2;
     this.castShadow = false;
 };
 AngularGL.Plane.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Plane.prototype.constructor = AngularGL.Plane;
-AngularGL.Cube = function(side, color, wireframe) {
-    AngularGL.Mesh.apply(this, [
-        new AngularGL.BoxGeometry(side, side, side, 1, 1, 1),
-        new AngularGL.MeshPhongMaterial({
-            color: color || 0xffffff,
-            wireframe: !!wireframe
-        })
-    ]);
+AngularGL.Circle = function(parameters) {
+    var radius = parameters.radius || 10;
+    var segments = parameters.segments || 1;
+    var start = parameters.start || 0;
+    var length = parameters.length || Math.PI * 2;
+    var geometry = new AngularGL.CircleGeometry(radius, segments, start, length);
+    var material = new AngularGL.MeshPhongMaterial(parameters);
+    AngularGL.Mesh.call(this, geometry, material);
+};
+AngularGL.Circle.prototype = Object.create(AngularGL.Mesh.prototype);
+AngularGL.Circle.prototype.constructor = AngularGL.Circle;
+AngularGL.Ring = function(parameters) {
+    var innerRadius = parameters.innerRadius || 1;
+    var outerRadius = parameters.outerRadius || 10;
+    var segments = parameters.segments || 1;
+    var start = parameters.start || 0;
+    var length = parameters.length || Math.PI * 2;
+    var geometry = new AngularGL.RingGeometry(innerRadius, outerRadius, segments, segments, start, length);
+    var material = new AngularGL.MeshPhongMaterial(parameters);
+    AngularGL.Mesh.call(this, geometry, material);
+};
+AngularGL.Ring.prototype = Object.create(AngularGL.Mesh.prototype);
+AngularGL.Ring.prototype.constructor = AngularGL.Ring;
+AngularGL.Cube = function(parameters) {
+    parameters = parameters || {};
+    var side = parameters.side || 10;
+    var segments = parameters.segments || 1;
+    var geometry = new AngularGL.BoxGeometry(side, side, side, segments, segments, segments);
+    var material = new AngularGL.MeshPhongMaterial(parameters);
+    AngularGL.Mesh.call(this, geometry, material);
 };
 AngularGL.Cube.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Cube.prototype.constructor = AngularGL.Cube;
-AngularGL.Sphere = function(radius, color) {
-    AngularGL.Mesh.apply(this, [
-        new AngularGL.SphereGeometry(radius, 32, 32),
-        new AngularGL.MeshPhongMaterial({
-            color: color || 0xffffff
-        })
-    ]);
+AngularGL.Sphere = function(parameters) {
+    var radius = parameters.radius || 10;
+    var segments = parameters.segments || 1;
+    var geometry = new AngularGL.SphereGeometry(radius, segments, segments);
+    var material = new AngularGL.MeshPhongMaterial(parameters);
+    AngularGL.Mesh.call(this, geometry, material);
 };
 AngularGL.Sphere.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Sphere.prototype.constructor = AngularGL.Sphere;
+//Constants
+AngularGL.DEFAULT_MATERIAL_PARAMETERS = {
+    specular: 0xffffff,
+    shininess: 30,
+    combine: THREE.MixOperation,
+    side: AngularGL.DoubleSide
+};
+AngularGL.EPSILON = 1e-1;
 //New static methods
 /*AngularGL.Object3D.load = function(src, cb) {
     AngularGL.http.get(src).success(function(data) {
@@ -206,10 +248,6 @@ AngularGL.Sphere.prototype.constructor = AngularGL.Sphere;
 };*/
 
 //--------------------------------------------------------------------
-
-AngularGL.isArray = Array.isArray || function(obj) {
-    return toString.call(obj) === "[object Array]";
-};
 
 _.mixin(_.string.exports());
 _.mixin({
