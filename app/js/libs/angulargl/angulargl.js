@@ -9,26 +9,24 @@ angular.module("AngularGL", [])
 
 //Overridden constructors
 var AngularGL = {
-    WebGLRenderer: function(domElementId, alpha) {
-        var canvas = document.getElementById(domElementId);
-        var renderer =
-            //"RaytracingRenderer";
-            "WebGLRenderer";
-        THREE[renderer].call(this, {
+    WebGLRenderer: function(params) {
+        var canvas = document.getElementById(params.domElementId);
+        THREE.WebGLRenderer.call(this, {
             canvas: canvas,
             antialias: true,
-            alpha: alpha
+            alpha: params.alpha
         });
         this.shadowMapEnabled = true;
         this.shadowMapType = AngularGL.PCFSoftShadowMap;
         this.setSize(canvas.clientWidth, canvas.clientHeight);
+        this.gammaInput = true;
+        this.gammaOutput = true;
     },
-    Scene: function(domElementId, scope, alpha) {
+    Scene: function(params) {
         THREE.Scene.call(this);
         this.cameras = [];
-        this.cubeCameras = [];
-        this.scope = scope;
-        this.renderer = new AngularGL.WebGLRenderer(domElementId, alpha);
+        this.scope = params.scope;
+        this.renderer = new AngularGL.WebGLRenderer(params);
         this.loop = new AngularGL.Animation(this, function() {
             //window.setTimeout(function() {this.stop();}.bind(this), 100); //TODO: remove once fully debugged
         });
@@ -36,8 +34,6 @@ var AngularGL = {
             if(event.keyCode === 'C'.charCodeAt(0)) {
                 this.cameras.push(this.camera);
                 this.camera = this.cameras.shift();
-                //this.createControls();
-                //this.scope.camera = this.camera;
             }
         }.bind(this));
     },
@@ -134,18 +130,22 @@ AngularGL.Scene.prototype.addObject = function(obj) {
             this.cameras.push(obj);
         }
     }
-    if(obj instanceof THREE.CubeCamera) {
-        this.cubeCameras.push(obj);
-    }
     THREE.Scene.prototype.add.call(this, obj);
 };
 AngularGL.Scene.prototype.render = function() {
-    for(var i=0, cc=this.cubeCameras; i < cc.length; i++) {
-        var cubeCamera = cc[i];
-        cubeCamera.visible = false;
-        cubeCamera.updateCubeMap(this.renderer, this);
-        cubeCamera.visible = true;
-    }
+    /*var updateCubeMaps = false;
+    if(updateCubeMaps) {
+        for(var i=0, children=this.children; i < children.length; i++) {
+            var mesh = children[i];
+            if(mesh.cubeCamera) {
+                mesh.visible = false;
+                mesh.cubeCamera.position.copy(mesh.position);
+                mesh.cubeCamera.updateCubeMap(this.renderer, this);
+                mesh.visible = true;
+            }
+        }
+    }*/
+    (this.renders || function() {})();
     this.renderer.render(this, this.camera);
     if(this.loop.running && this.controls) {
         this.controls.update();
@@ -154,11 +154,12 @@ AngularGL.Scene.prototype.render = function() {
         this.scope.$digest();
     }
 };
-AngularGL.Scene.prototype.run = function() {
+AngularGL.Scene.prototype.run = function(renders) {
     if(!(this.camera && this.camera instanceof THREE.Camera)) {
         console.error("At least one Camera object is required to render scene");
         return;
     }
+    this.renders = renders;
     this.loop.start();
 };
 Object.defineProperty(AngularGL.Scene.prototype, "camera", {
@@ -212,8 +213,9 @@ AngularGL.Ring.prototype.constructor = AngularGL.Ring;
 AngularGL.Cube = function(parameters) {
     parameters = parameters || {};
     var side = parameters.side || 10;
+    var sides = parameters.sides || [];
     var segments = parameters.segments || 1;
-    var geometry = new AngularGL.BoxGeometry(side, side, side, segments, segments, segments);
+    var geometry = new AngularGL.BoxGeometry(sides[0] || side, sides[1] || side, sides[2] || side, segments, segments, segments);
     var material = new AngularGL.MeshPhongMaterial(parameters);
     AngularGL.Mesh.call(this, geometry, material);
 };
@@ -228,6 +230,26 @@ AngularGL.Sphere = function(parameters) {
 };
 AngularGL.Sphere.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Sphere.prototype.constructor = AngularGL.Sphere;
+AngularGL.Sun = function(sunIntensity, shadowCameraVisible) {
+    var sunIntensity = (typeof sunIntensity === "undefined" || sunIntensity === "auto")? 0.3 : sunIntensity;
+    AngularGL.SpotLight.call(this, "#d6fc6f"/* color */, sunIntensity, 0/* distance */, Math.PI/2 /* angle */, 1/* exponent */);
+    this.position.set(1000, 2000, 1000);
+    this.shadowDarkness = 0.3 * sunIntensity;
+    this.shadowBias = -0.0002;
+    this.shadowCameraNear = 750;
+    this.shadowCameraFar = 4000;
+    this.shadowCameraFov = 30;
+    this.shadowCameraVisible = shadowCameraVisible;
+};
+AngularGL.Sun.prototype = Object.create(AngularGL.SpotLight.prototype);
+AngularGL.Sun.prototype.constructor = AngularGL.Sun;
+AngularGL.SkyBox = function(color) {
+    AngularGL.Cube.call(this, {side: 5000});
+    this.material = new AngularGL.MeshBasicMaterial({color: color || "#a7dcf8"});
+    this.material.side = AngularGL.BackSide;
+};
+AngularGL.SkyBox.prototype = Object.create(AngularGL.Cube.prototype);
+AngularGL.SkyBox.prototype.constructor = AngularGL.SkyBox;
 //Constants
 AngularGL.DEFAULT_MATERIAL_PARAMETERS = {
     specular: 0xffffff,
