@@ -3,13 +3,13 @@
 angular.module("AngularGLApp.controllers", ["AngularGL"])
 .controller("RootCtrl", ["$scope", "$location", function($scope, $location) {
     $scope.activePath = null;
-    $scope.$on("$routeChangeSuccess", function(){
+    $scope.$on("$routeChangeSuccess", function() {
         $scope.activePath = $location.path().substr(1);
     });
 }])
 .controller("ReflectionCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
     $scope.play = true;
-    
+
     //Scene
     var scene = new AngularGL.Scene({
         domElementId: "canvas",
@@ -23,10 +23,10 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     //Axis Helper
     var axisHelper = new AngularGL.AxisHelper(150);
     //scene.add(axisHelper);
-    
+
     //Primary Camera
     var camera01 = new AngularGL.PerspectiveCamera(45, 1, 1, 10000);
-    camera01.position.set(-59, 25, 66);
+    camera01.position.set(-50, 21, 56);
     camera01.lookAtOrigin();
     scene.add(camera01);
 
@@ -71,12 +71,12 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     opacityPlane.position.copy(wall.position);
     opacityPlane.position.z += 5;
     scene.add(opacityPlane);
-    
+
     //Cube
     var cube = new AngularGL.Cube({xyz: 8, segments: 24, color: "#29ad33"});
     cube.position.set(0, 4, 1);
     scene.add(cube);
-    
+
     //Post
     var posts = [];
     for(var i=50; i<=50; i+=50) {
@@ -119,16 +119,16 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Skybox
     //scene.add(new AngularGL.SkyBox());
-    
+
     //Sun
     //scene.add(new AngularGL.Sun());
-    
+
     //Reset scene
     function resetScene() {
         cube.position.x = 60;
     }
     resetScene();
-    
+
     //Run scene
     scene.run(function() {
         wallMirror.render();
@@ -148,16 +148,16 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
             }
         }
     }, resetScene);
-    
+
     //Controls
     scene.gui = "partials/reflectionControls.html";
-    
+
     //Reflectivity slider
     $scope.r = 0.5;
     $scope.$watch("r", function(r) {
         opacityPlane.material.opacity = 1 - r;
     });
-    
+
     //TODO: figure out wht to do with these
     //Toggle animation
     $scope.$watch("play", function(p) {
