@@ -21,20 +21,61 @@ var AngularGL = {
         this.setSize(canvas.clientWidth, canvas.clientHeight);
         this.gammaInput = true;
         this.gammaOutput = true;
+        //Methods
+        this._renderBuffer = this.renderBuffer;
+        this.renderBuffer = function(camera, lights, fog, material, geometryGroup, object) {
+            if(typeof material.vertexShader === "object" || typeof material.fragmentShader === "object") {
+                AngularGL.q.all({
+                    vertex: material.vertexShader,
+                    fragment: material.fragmentShader
+                }).then(function(shaders) {
+                    material.vertexShader = shaders.vertex.data || shaders.vertex;
+                    material.fragmentShader = shaders.fragment.data || shaders.fragment;
+                    this._renderBuffer(camera, lights, fog, material, geometryGroup, object);
+                }.bind(this));
+            } else {
+                this._renderBuffer(camera, lights, fog, material, geometryGroup, object);
+            }
+        }
     },
     Scene: function(params) {
         THREE.Scene.call(this);
         this.cameras = [];
+        this.animations = [];
         this.scope = params.scope;
+        this.controls = typeof params.controls !== "undefined"? params.controls : true;
         this.renderer = new AngularGL.WebGLRenderer(params);
-        this.loop = new AngularGL.Animation(this, function() {
-            //window.setTimeout(function() {this.stop();}.bind(this), 100); //TODO: remove once fully debugged
-        });
+        this.loop = new AngularGL.Animation(this, function() {});
         window.addEventListener("keydown", function(event) {
-            if(event.keyCode === 'C'.charCodeAt(0)) {
+            if(event.keyCode === "C".charCodeAt(0)) {
                 this.cameras.push(this.camera);
                 this.camera = this.cameras.shift();
             }
+        }.bind(this));
+        //Destroy scene on route change
+        this.scope.$on("$routeChangeStart", function(e, routeTo, routeFrom) {
+            /*console.log(this.renderer.info.memory);
+            //Cancel render loop and animations
+            while(this.animations.length) {
+                var animation = this.animations.pop();
+                animation.stop();
+                animation = null;
+            }
+            //Remove objects from the scene
+            AngularGL.removeChildren(this);
+            //Remove cameras
+            while(this.cameras.length) {
+                var camera = this.cameras.pop();
+                camera = null;
+            }
+            //Remove scope
+            delete this.scope;
+            console.log(this.renderer.info.memory);
+            e.preventDefault();*/
+            /*e.preventDefault();
+            console.log(routeTo);
+            AngularGL.location.path(routeTo.$$route.originalPath, true);*/
+            //routeTo.reload();
         }.bind(this));
     },
     Animation: function(scene, animateFn, prepareFn) {
@@ -43,6 +84,7 @@ var AngularGL = {
         this.prepareFn = prepareFn || function() {};
         this.complete;
         this.scene = scene;
+        this.scene.animations.push(this);
         this.animate = function() {
             this.id = requestAnimationFrame(this.animate.bind(this));
             this.step();
@@ -80,8 +122,11 @@ var AngularGL = {
         this.castShadow = true;
         this.receiveShadow = true;
     },
+    MeshBasicMaterial: function(parameters) {
+        THREE.MeshBasicMaterial.call(this, _.extend({}, AngularGL.DEFAULT_MATERIAL_PARAMETERS, parameters));
+    },
     MeshPhongMaterial: function(parameters) {
-        THREE.MeshPhongMaterial.call(this, _.extend(AngularGL.DEFAULT_MATERIAL_PARAMETERS, parameters));
+        THREE.MeshPhongMaterial.call(this, _.extend({}, AngularGL.DEFAULT_MATERIAL_PARAMETERS, parameters));
     },
     AmbientLight: function(hex) {
         hex = hex || 0xffffff;
@@ -113,6 +158,17 @@ for(var prop in THREE) {
     }
 }
 //Overridden or new prototypes
+AngularGL.MeshFaceMaterial.prototype.dispose = function() {
+    while(this.materials.length) {
+        var material = this.materials.pop();
+        //if(material instanceof THREE.MirrorMaterial)
+        //console.log(material);
+        material.dispose();
+    }
+};
+AngularGL.PerspectiveCamera.prototype.lookAtOrigin = function() {
+    this.lookAt(new AngularGL.Vector3());
+};
 AngularGL.Scene.prototype.add = function() {
     var args = _.flatten(arguments);
     for(var i=0; i<args.length; i++) {
@@ -133,18 +189,6 @@ AngularGL.Scene.prototype.addObject = function(obj) {
     THREE.Scene.prototype.add.call(this, obj);
 };
 AngularGL.Scene.prototype.render = function() {
-    /*var updateCubeMaps = false;
-    if(updateCubeMaps) {
-        for(var i=0, children=this.children; i < children.length; i++) {
-            var mesh = children[i];
-            if(mesh.cubeCamera) {
-                mesh.visible = false;
-                mesh.cubeCamera.position.copy(mesh.position);
-                mesh.cubeCamera.updateCubeMap(this.renderer, this);
-                mesh.visible = true;
-            }
-        }
-    }*/
     (this.renders || function() {})();
     this.renderer.render(this, this.camera);
     if(this.loop.running && this.controls) {
@@ -165,10 +209,17 @@ AngularGL.Scene.prototype.run = function(renders) {
 Object.defineProperty(AngularGL.Scene.prototype, "camera", {
     set: function(camera) {
         this.scope.camera = camera;
-        this.controls = new AngularGL.OrbitControls(camera, this.renderer.domElement);
+        if(this.controls) {
+            this.controls = new AngularGL.OrbitControls(camera, this.renderer.domElement);
+        }
     },
     get: function() {
         return this.scope.camera;
+    }
+});
+Object.defineProperty(AngularGL.Scene.prototype, "gui", {
+    set: function(partial) {
+        this.scope.gui = partial;
     }
 });
 Object.defineProperty(AngularGL.Animation.prototype, "running", {
@@ -178,8 +229,8 @@ Object.defineProperty(AngularGL.Animation.prototype, "running", {
 });
 //New classes or subclasses
 AngularGL.Plane = function(parameters) {
-    var side = parameters.side || 100;
-    var geometry = new AngularGL.PlaneBufferGeometry(side, side);
+    var xyz = parameters.xyz || 100;
+    var geometry = new AngularGL.PlaneBufferGeometry(xyz, xyz);
     var material = new AngularGL.MeshPhongMaterial(parameters);
     AngularGL.Mesh.call(this, geometry, material);
     this.rotation.x = -Math.PI / 2;
@@ -212,10 +263,10 @@ AngularGL.Ring.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Ring.prototype.constructor = AngularGL.Ring;
 AngularGL.Cube = function(parameters) {
     parameters = parameters || {};
-    var side = parameters.side || 10;
+    var xyz = parameters.xyz || 10;
     var sides = parameters.sides || [];
     var segments = parameters.segments || 1;
-    var geometry = new AngularGL.BoxGeometry(sides[0] || side, sides[1] || side, sides[2] || side, segments, segments, segments);
+    var geometry = new AngularGL.BoxGeometry(sides[0] || xyz, sides[1] || xyz, sides[2] || xyz, segments, segments, segments);
     var material = new AngularGL.MeshPhongMaterial(parameters);
     AngularGL.Mesh.call(this, geometry, material);
 };
@@ -244,7 +295,7 @@ AngularGL.Sun = function(sunIntensity, shadowCameraVisible) {
 AngularGL.Sun.prototype = Object.create(AngularGL.SpotLight.prototype);
 AngularGL.Sun.prototype.constructor = AngularGL.Sun;
 AngularGL.SkyBox = function(color) {
-    AngularGL.Cube.call(this, {side: 5000});
+    AngularGL.Cube.call(this, {xyz: 5000});
     this.material = new AngularGL.MeshBasicMaterial({color: color || "#a7dcf8"});
     this.material.side = AngularGL.BackSide;
 };
@@ -254,20 +305,25 @@ AngularGL.SkyBox.prototype.constructor = AngularGL.SkyBox;
 AngularGL.DEFAULT_MATERIAL_PARAMETERS = {
     specular: 0xffffff,
     shininess: 30,
-    combine: THREE.MixOperation,
+    combine: AngularGL.MixOperation,
     side: AngularGL.DoubleSide
 };
 AngularGL.EPSILON = 1e-1;
 //New static methods
-/*AngularGL.Object3D.load = function(src, cb) {
-    AngularGL.http.get(src).success(function(data) {
-        //var O = eval(data);
-        cb(new (eval(data))());
-        //console.log(obj);
-    }).error(function(err) {
-        console.warn(err);
-    });
-};*/
+AngularGL.removeChildren = function(parent) {
+    while(parent.children.length) {
+        var object = parent.children[0];
+        AngularGL.removeChildren(object);
+        parent.remove(object);
+        if(object instanceof THREE.Mesh) {
+            object.geometry.dispose();
+            object.material.dispose();
+        }
+    }
+};
+AngularGL.load = function(resource) {
+    return this.http.get("js/libs/angulargl/" + resource);
+};
 
 //--------------------------------------------------------------------
 
