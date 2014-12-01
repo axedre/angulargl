@@ -17,8 +17,6 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         alpha: false,
         controls: false
     });
-    var WIDTH = scene.renderer.domElement.clientWidth;
-    var HEIGHT = scene.renderer.domElement.clientHeight;
 
     //Axis Helper
     var axisHelper = new AngularGL.AxisHelper(150);
@@ -43,9 +41,9 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         ambient: 0x444444,
         reflectivity: [0, 0, 0, 0, 1, 0] //TODO
     });
-    var wallMirror = new AngularGL.Mirror(scene.renderer, camera01, {
-        textureWidth: WIDTH,
-        textureHeight: HEIGHT,
+    var wallMirror = new AngularGL.Mirror(scene, {
+        width: 100,
+        height: 100,
         color: wallColor
     });
     wall.material = new AngularGL.MeshFaceMaterial([
@@ -58,19 +56,8 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     ]);
     wall.add(wallMirror);
     wall.position.set(0, 50, -15);
+    wall.rotation.y += Math.PI / 12; //30° w.r.t. the approaching cube
     scene.add(wall);
-    var opacityPlane = new AngularGL.Mesh(
-        new AngularGL.BoxGeometry(100, 100, AngularGL.EPSILON),
-        new AngularGL.MeshPhongMaterial({
-            color: wallColor,
-            transparent: true,
-            opacity: 0.5
-        })
-    );
-    opacityPlane.castShadow = false;
-    opacityPlane.position.copy(wall.position);
-    opacityPlane.position.z += 5;
-    scene.add(opacityPlane);
 
     //Cube
     var cube = new AngularGL.Cube({xyz: 8, segments: 24, color: "#29ad33"});
@@ -136,8 +123,8 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Animation
     var animation = new AngularGL.Animation(scene, function() {
-        if(cube.position.x > -60) {
-            cube.rotation.y += 2 * Math.PI / 100; //approx 360° (2pi rad) in 5" (100f @20fps)
+        if(cube.position.x > -20) {
+            //cube.rotation.y += 2 * Math.PI / 100; //approx 360° (2pi rad) in 5" (100f @20fps)
             cube.position.x -= 1;
         } else {
             if(this.loop) {
@@ -155,7 +142,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     //Reflectivity slider
     $scope.r = 0.5;
     $scope.$watch("r", function(r) {
-        opacityPlane.material.opacity = 1 - r;
+        wallMirror.reflectivity = r;
     });
 
     //TODO: figure out wht to do with these

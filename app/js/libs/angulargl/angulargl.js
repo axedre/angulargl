@@ -139,7 +139,17 @@ var AngularGL = {
     SpotLight: function() {
         THREE.SpotLight.apply(this, arguments);
         this.castShadow = true;
-    }
+    },
+    Mirror: function(scene, params) {
+        THREE.Mirror.call(this, scene.renderer, scene.camera, _.extend({
+            textureWidth: scene.width,
+            textureHeight: scene.height
+        }, params));
+        this.film = new AngularGL.Film(params);
+        this.film.castShadow = false;
+        this.film.position.z += 5;
+        this.add(this.film);
+    },
 };
 //Defaults
 for(var prop in THREE) {
@@ -206,25 +216,48 @@ AngularGL.Scene.prototype.run = function(renders) {
     this.renders = renders;
     this.loop.start();
 };
-Object.defineProperty(AngularGL.Scene.prototype, "camera", {
-    set: function(camera) {
-        this.scope.camera = camera;
-        if(this.controls) {
-            this.controls = new AngularGL.OrbitControls(camera, this.renderer.domElement);
+Object.defineProperties(AngularGL.Scene.prototype, {
+    camera: {
+        set: function(camera) {
+            this.scope.camera = camera;
+            if(this.controls) {
+                this.controls = new AngularGL.OrbitControls(camera, this.renderer.domElement);
+            }
+        },
+        get: function() {
+            return this.scope.camera;
         }
     },
-    get: function() {
-        return this.scope.camera;
+    gui: {
+        set: function(partial) {
+            this.scope.gui = partial;
+        }
+    },
+    width: {
+        get: function() {
+            var ctx = this.renderer.getContext();
+            return ctx.canvas.clientWidth;
+        }
+    },
+    height: {
+        get: function() {
+            var ctx = this.renderer.getContext();
+            return ctx.canvas.clientHeight;
+        }
     }
 });
-Object.defineProperty(AngularGL.Scene.prototype, "gui", {
-    set: function(partial) {
-        this.scope.gui = partial;
+Object.defineProperties(AngularGL.Animation.prototype, {
+    running: {
+        get: function() {
+            return !!this.id;
+        }
     }
 });
-Object.defineProperty(AngularGL.Animation.prototype, "running", {
-    get: function() {
-        return !!this.id;
+Object.defineProperties(AngularGL.Mirror.prototype, {
+    reflectivity: {
+        set: function(r) {
+            this.film.reflectivity = r;
+        }
     }
 });
 //New classes or subclasses
@@ -238,6 +271,23 @@ AngularGL.Plane = function(parameters) {
 };
 AngularGL.Plane.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Plane.prototype.constructor = AngularGL.Plane;
+AngularGL.Film = function(parameters) {
+    var geometry = new AngularGL.BoxGeometry(parameters.width || 10, parameters.height || 10, AngularGL.EPSILON);
+    var material = new AngularGL.MeshPhongMaterial({
+        color: parameters.color || 0xffffff,
+        transparent: true
+    });
+    AngularGL.Mesh.call(this, geometry, material);
+};
+AngularGL.Film.prototype = Object.create(AngularGL.Mesh.prototype);
+AngularGL.Film.prototype.constructor = AngularGL.Film;
+Object.defineProperties(AngularGL.Film.prototype, {
+    reflectivity: {
+        set: function(r) {
+            this.material.opacity = 1 - r;
+        }
+    }
+});
 AngularGL.Circle = function(parameters) {
     var radius = parameters.radius || 10;
     var segments = parameters.segments || 1;
