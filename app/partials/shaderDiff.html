@@ -1,0 +1,185 @@
+<div id="shaderDiff" class="container">
+    <div>
+        <div>
+            <h3>Original shader example from <a href="http://http.developer.nvidia.com/GPUGems/gpugems_ch08.html" target="_blank">nvidia</a></h3>
+        </div>
+        <div>
+            <h3>vshader.c</h3>
+        </div>
+    </div>
+    <div>
+        <pre>
+float3 blend3 (float3 x)
+{
+    float3 y = 1 - x * x;
+    y = max(y, float3 (0, 0, 0));
+    return (y);
+}</pre>
+        <pre>
+vec3 blend3(vec3 x) {
+    vec3 y = vec3(1.0 - x * x);
+    y = max(y, vec3(0));
+    return y;
+}
+        </pre>
+    </div>
+    <div>
+        <p>Nothing notable here, apart from the fact that type names differ slightly between the two version: <code>float3</code> is mapped to <code>vec3</code> in GLSL.</p>
+        <p>Other conversions are:</p>
+        <ul>
+            <li><code>float4</code>&rarr;<code>vec4</code></li>
+            <li><code>float4x4</code>&rarr;<code>mat4</code></li>
+            <li><code>mul(<var>a</var>, <var>b</var>)</code>&rarr;<code><var>a</var> * <var>b</var></code></li>
+        </ul>
+        <p>Also, in GLSL <code>vec3(<var>n</var>)</code> is shorthand for <code>vec3(<var>n</var>, <var>n</var>, <var>n</var>)</code>.</p>
+    </div>
+    <div>
+        <pre>
+void vp_Diffraction (
+        </pre>
+        <div>
+            <p>In GLSL, a shader's entry point is its <code>main</code> function and there is no need to specify uniforms and attributes in the <code>main</code>'s signature, but rather before its definition.</p>
+        </div>
+    </div>
+    <div>
+        <pre>
+    in float4 position : POSITION,
+    in float3 normal   : NORMAL,</pre>
+        <div>
+            <p><code>position</code> and <code>normal</code> uniforms are automatically passed to the shader by Three.js.</p>
+        </div>
+    </div>
+    <div>    
+        <pre>
+    in float3 tangent  : TEXCOORD0,</pre>
+        <pre>
+attribute vec3 aTangent;</pre>
+    </div>
+    <div>
+        <p>Data type <code>attribute</code> defines a <i>per-vertex</i> property passed by the program to the shader.</p>
+        <p>In my diffraction shader prototype, I had to specify a tangent vector for each vertex of the CD's surface, hence the need for an <code>attribute</code> variable.</p>
+    </div>
+    <div>
+        <pre>
+    out float4 positionO : POSITION,</pre>
+        <div>
+            <p>This is simply GLSL's built-in <code>gl_Position</code> output variable, so no need to specify it.</p>
+        </div>
+    </div>
+    <div>
+        <pre>
+    out float4 colorO    : COLOR,</pre>
+        <pre>
+varying vec3 vColor;</pre>
+    </div>
+    <div>
+        <p>The <code>vColor</code> variable is of data type <code>varying</code>, meaning its value will be passed on from the vertex shader to the fragment shader, for possible further manipulation; in this case, however, the chromatic logic is also computed by the vertex shader (since it depends on vertex positions, which are only available to the vertex shader), so the fragment shader simply copies the content of the <code>vColor</code> variable to GLSL's built-in <code>gl_FragColor</code> output variable for final rendering.</p>
+        <p>Furthermore, <code>vColor</code> is of type <code>vec3</code> for simplicity, since the fourth index is the alpha channel, which is added only at the end of the computation, and equals 1.0</p>
+    </div>
+    <div>
+        <pre>
+    uniform float4x4 ModelViewProjectionMatrix,</pre>
+        <div>
+            <p>Obtained with <code>projectionMatrix * modelViewMatrix</code>, which are two unifoms passed by Three.js.</p>
+        </div>
+    </div>
+    <div>
+        <pre>
+    uniform float4x4 ModelViewMatrix,</pre>
+        <div>
+            <p>Passed on as <code>modelViewMatrix</code>.</p>
+        </div>
+    </div>
+    <div>
+        <pre>
+    uniform float4x4 ModelViewMatrixIT,</pre>
+        <div>
+            <p>The inverse-transpose of the model-view matrix; while this could easily be computed with the appropriate GLSL function, it is useless to do so, for the code later uses only the top 3x3 sub-matrix of <code>ModelViewMatrixIT</code>, which just so happens to be Three.js's <code>normalMatrix</code>.</p>
+        </div>
+    </div>
+    <div>
+        <div>
+            <p>This is missing in the original code, and is replaced by the hard coded value of 4. I decided to pass it to the shader as a uniform, just like the <code>r</code> and <code>d</code> variables.</p>
+        </div>
+        <pre>
+uniform float C; /* Shape parameter */</pre>
+    </div>
+    <div>
+        <pre>
+    uniform float r,
+    uniform float d,
+    uniform float4 hiliteColor,
+    uniform float3 lightPosition,</pre>
+        <pre>
+uniform float r; /* Roughness parameter */
+uniform float d; /* Distance between bands */
+uniform vec3 color;
+uniform vec3 pointLightPosition;</pre>
+    </div>
+    <div>
+        <p>In this case, <code>color</code> is a <code>uniform</code> rather than an <code>attribute</code> for it refers to the material <i>as a whole</i> (e.g. the color of a CD's recordable surface).</p>
+    </div>
+    <div>
+        <pre>
+    uniform float3 eyePosition
+)</pre>
+        <div>
+            <p>Mapped by Three.js's <code>cameraPosition</code> uniform.</p>
+        </div>
+    </div>
+    <div>
+        <pre>
+{
+    float3 P = mul(ModelViewMatrix, position).xyz;
+    float3 L = normalize(lightPosition - P);
+    float3 V = normalize(eyePosition - P);
+    float3 H = L + V;
+    float3 N = mul((float3x3)ModelViewMatrixIT, normal);
+    float3 T = mul((float3x3)ModelViewMatrixIT, tangent);
+    float u = dot(T, H) * d;
+    float w = dot(N, H);
+    float e = r * u / w;
+    float c = exp(-e * e);
+    float4 anis = hiliteColor * float4(c.x, c.y, c.z, 1);
+
+    if (u < 0) u = -u;
+
+    float4 cdiff = float4(0, 0, 0, 1);
+    for (int n = 1; n < 8; n++)
+    {
+        float y = 2 * u / n - 1;
+        cdiff.xyz += blend3(float3(4 * (y - 0.75), 4 * (y - 0.5), 4 * (y - 0.25)));
+    }
+
+    positionO = mul(ModelViewProjectionMatrix, position);
+
+    colorO = cdiff + anis;
+}</pre>
+        <pre>
+void main() {
+    vec3 P = (modelViewMatrix * vec4(position, 1.0)).xyz;
+    vec3 L = normalize(pointLightPosition - P);
+    vec3 V = normalize(cameraPosition - P);
+    vec3 H = L + V;
+    vec3 N = normalMatrix * normal;
+    vec3 T = normalMatrix * aTangent;
+    float u = dot(T, H) * d;
+    float w = dot(N, H);
+    float e = r * u / w;
+    float c = exp(-e * e);
+    vec3 anis = color * vec3(c);
+
+    if(u < 0.0) u = -u;
+
+    vec3 cdiff = vec3(0);
+    for (float n = 1.0; n < 8.0; n+=1.0) {
+        float y = 2.0 * u / n - 1.0;
+        cdiff.xyz += blend3(vec3(C * (y - 0.75), C * (y - 0.5), C * (y - 0.25)));
+    }
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+    vColor = cdiff + anis;
+}</pre>
+    </div>
+</div>

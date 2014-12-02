@@ -136,7 +136,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         }
     }, resetScene);
 
-    //Controls
+    //Gui
     scene.gui = "partials/reflectionControls.html";
 
     //Reflectivity slider
@@ -269,6 +269,15 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     light.position.set(0, 0, 300);
     scene.add(light);
 
+    //Gui
+    /*scene.gui = "partials/diffractionControls.html";
+    //TODO: change with appropriate $watchCollection method
+    $scope.$watch("d+r+C", function() {
+        cdBack.material.uniforms.d.value = $scope.d;
+        cdBack.material.uniforms.r.value = $scope.r;
+        cdBack.material.uniforms.C.value = $scope.C;
+    });*/
+    
     //Reset scene
     function resetScene() {
         _.each(cd, function(part) {
