@@ -24,7 +24,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Primary Camera
     var camera01 = new AngularGL.PerspectiveCamera(45, 1, 1, 10000);
-    camera01.position.set(-50, 21, 56);
+    camera01.position.set(-47.50, 20, 53.20);
     camera01.lookAtOrigin();
     scene.add(camera01);
 
