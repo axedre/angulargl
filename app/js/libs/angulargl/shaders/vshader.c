@@ -9,10 +9,10 @@ uniform float C; /* Shape parameter */
 uniform float r; /* Roughness parameter */
 uniform float d; /* Distance between bands */
 uniform vec3 color;
-uniform vec3 pointLightPosition;
+uniform vec3 spotLightPosition;
 void main() {
     vec3 P = (modelViewMatrix * vec4(position, 1.0)).xyz;
-    vec3 L = normalize(pointLightPosition - P);
+    vec3 L = normalize(spotLightPosition - P);
     vec3 V = normalize(cameraPosition - P);
     vec3 H = L + V;
     vec3 N = normalMatrix * normal;

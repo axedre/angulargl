@@ -8,14 +8,12 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     });
 }])
 .controller("ReflectionCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
-    $scope.play = true;
-
     //Scene
     var scene = new AngularGL.Scene({
         domElementId: "canvas",
         scope: $scope,
         alpha: false,
-        controls: false
+        controls: true
     });
 
     //Axis Helper
@@ -117,28 +115,20 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     resetScene();
 
     //Run scene
-    scene.run(function() {
-        wallMirror.render();
-    });
-
+    scene.run();
+    
     //Animation
     var animation = new AngularGL.Animation(scene, function() {
         if(cube.position.x > -20) {
             //cube.rotation.y += 2 * Math.PI / 100; //approx 360° (2pi rad) in 5" (100f @20fps)
             cube.position.x -= 1;
         } else {
-            if(this.loop) {
-                this.prepareFn();
-            } else {
-                $scope.play = false;
-                this.complete = true;
-            }
+            this.reset();
         }
     }, resetScene);
 
     //Gui
     scene.gui = "partials/reflectionControls.html";
-
     //Reflectivity slider
     $scope.r = 0.5;
     $scope.$watch("r", function(r) {
@@ -146,18 +136,16 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     });
 
     //TODO: figure out wht to do with these
+    
     //Toggle animation
+    //$scope.play = true;
     $scope.$watch("play", function(p) {
         animation.toggle(p);
     });
 
-    //Toggle loop
-    $scope.loop = true;
-    $scope.$watch("loop", function(l) {
-        animation.loop = l;
-    });
+    //Right controls
     $scope.reset = animation.reset.bind(animation);
-    $scope.step = animation.step.bind(animation);
+    $scope.step = animation.stepOnce.bind(animation);
     $scope.getCameraPosition = function() {
         var pos = $scope.camera.position;
         console.log("%s, %s, %s", pos.x.toFixed(2), pos.y.toFixed(2), pos.z.toFixed(2));
@@ -169,10 +157,6 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
 }])
 .controller("DiffractionCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
-    $scope.d = 2.0;
-    $scope.r = 0.5;
-    $scope.C = 4.0;
-
     //Scene
     var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope, alpha: false});
 
@@ -195,7 +179,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     cdFront.geometry.applyMatrix(new AngularGL.Matrix4().makeTranslation(0, 0, AngularGL.EPSILON));
     cdInner = new AngularGL.Ring({
         innerRadius: 7.5,
-        outerRadius: 60,
+        outerRadius: 17.5,
         segments: 20,
         color: "white",
         transparent: true,
@@ -205,27 +189,25 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         innerRadius: 17.5,
         outerRadius: 60,
         segments: 20,
-        color: "#befadc",
         transparent: false
     });
     cdBack.geometry.applyMatrix(new AngularGL.Matrix4().makeTranslation(0, 0, -AngularGL.EPSILON));
     //Compute tangents
-    _.each(cdBack.geometry.vertices, function(vertex) {
+    _.each(cdBack.geometry.vertices, function(vertex, i) {
         var g = new AngularGL.Geometry();
         var A = cdBack.geometry.center().clone();
         var B = vertex.clone();
         g.vertices.push(A, B);
-        var aTangent = new AngularGL.Line(g, new AngularGL.LineBasicMaterial());
-        aTangent.rotation.z = Math.PI / 2;
-        vertex.aTangent = B;
+        g.applyMatrix(new AngularGL.Matrix4().makeRotationZ(Math.PI / 2));
+        vertex.aTangent = B.normalize();
     });
     cdBack.material = new AngularGL.ShaderMaterial({
         uniforms: AngularGL.UniformsUtils.merge([
             AngularGL.UniformsLib["lights"],
             {
                 color : {
-                    type: "v3",
-                    value: new AngularGL.Vector3(190/255, 250/255, 220/255)
+                    type: "c",
+                    value: $scope.color
                 },
                 d: {
                     type: "f",
@@ -260,23 +242,29 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     camera.position.set(250, 50, 400);
     scene.add(camera);
 
-    //Primary camera helper
-    var camera_helper = new AngularGL.CameraHelper(camera);
-    //scene.add(camera_helper);
-
     //Light
     var light = new AngularGL.PointLight(0x404040, 0.5);
     light.position.set(0, 0, 300);
     scene.add(light);
+    
+    //Sun
+    //scene.add(new AngularGL.Sun());
 
     //Gui
-    /*scene.gui = "partials/diffractionControls.html";
-    //TODO: change with appropriate $watchCollection method
-    $scope.$watch("d+r+C", function() {
-        cdBack.material.uniforms.d.value = $scope.d;
-        cdBack.material.uniforms.r.value = $scope.r;
-        cdBack.material.uniforms.C.value = $scope.C;
-    });*/
+    scene.gui = "partials/diffractionControls.html";
+    var params = ["d", "r", "C"];
+    $scope.$watchGroup(params, function(values) {
+        _.each(values, function(value, i) {
+            cdBack.material.uniforms[params[i]].value = value;
+        });
+    });
+    $scope.$watch("color", function(color) {
+        cdBack.material.uniforms.color.value = new AngularGL.Color(color);
+    });
+    $scope.color = "#ffe55c";
+    $scope.d = 2.0;
+    $scope.r = 0.5;
+    $scope.C = 4.0;
     
     //Reset scene
     function resetScene() {
@@ -290,7 +278,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Run scene
     scene.run();
-
+    
     //Animation
     var animation = new AngularGL.Animation(scene, function() {
         _.each(cd, function(part, i) {
@@ -305,13 +293,8 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         animation.toggle(p);
     });
 
-    //Toggle loop
-    $scope.loop = true;
-    $scope.$watch("loop", function(l) {
-        animation.loop = l;
-    });
-
+    //Right controls
     $scope.reset = animation.reset.bind(animation);
     $scope.step = animation.step.bind(animation);
 
-}])
+}]);

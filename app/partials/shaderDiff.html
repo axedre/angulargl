@@ -74,7 +74,7 @@ varying vec3 vColor;</pre>
     </div>
     <div>
         <p>The <code>vColor</code> variable is of data type <code>varying</code>, meaning its value will be passed on from the vertex shader to the fragment shader, for possible further manipulation; in this case, however, the chromatic logic is also computed by the vertex shader (since it depends on vertex positions, which are only available to the vertex shader), so the fragment shader simply copies the content of the <code>vColor</code> variable to GLSL's built-in <code>gl_FragColor</code> output variable for final rendering.</p>
-        <p>Furthermore, <code>vColor</code> is of type <code>vec3</code> for simplicity, since the fourth index is the alpha channel, which is added only at the end of the computation, and equals 1.0</p>
+        <p>Furthermore, <code>vColor</code> is of type <code>vec3</code> for simplicity, since the fourth index is the alpha channel, which is added only at the end of the computation, and equals 1.0.</p>
     </div>
     <div>
         <pre>
@@ -114,7 +114,7 @@ uniform float C; /* Shape parameter */</pre>
 uniform float r; /* Roughness parameter */
 uniform float d; /* Distance between bands */
 uniform vec3 color;
-uniform vec3 pointLightPosition;</pre>
+uniform vec3 spotLightPosition;</pre>
     </div>
     <div>
         <p>In this case, <code>color</code> is a <code>uniform</code> rather than an <code>attribute</code> for it refers to the material <i>as a whole</i> (e.g. the color of a CD's recordable surface).</p>
@@ -158,7 +158,7 @@ uniform vec3 pointLightPosition;</pre>
         <pre>
 void main() {
     vec3 P = (modelViewMatrix * vec4(position, 1.0)).xyz;
-    vec3 L = normalize(pointLightPosition - P);
+    vec3 L = normalize(spotLightPosition - P);
     vec3 V = normalize(cameraPosition - P);
     vec3 H = L + V;
     vec3 N = normalMatrix * normal;

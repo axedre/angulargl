@@ -9,13 +9,14 @@ angular.module("AngularGL", [])
 
 //Overridden constructors
 var AngularGL = {
-    WebGLRenderer: function(params) {
+    WebGLRenderer: function(scene, params) {
         var canvas = document.getElementById(params.domElementId);
         THREE.WebGLRenderer.call(this, {
             canvas: canvas,
             antialias: true,
             alpha: params.alpha
         });
+        //this.scene = scene;
         this.shadowMapEnabled = true;
         this.shadowMapType = AngularGL.PCFSoftShadowMap;
         this.setSize(canvas.clientWidth, canvas.clientHeight);
@@ -37,6 +38,10 @@ var AngularGL = {
                 this._renderBuffer(camera, lights, fog, material, geometryGroup, object);
             }
         }
+        this._render = this.render;
+        this.render = function() {
+            this._render.apply(this, arguments.length? arguments : [scene, scene.camera]);
+        };
     },
     Scene: function(params) {
         THREE.Scene.call(this);
@@ -44,8 +49,46 @@ var AngularGL = {
         this.animations = [];
         this.scope = params.scope;
         this.controls = typeof params.controls !== "undefined"? params.controls : true;
-        this.renderer = new AngularGL.WebGLRenderer(params);
-        this.loop = new AngularGL.Animation(this, function() {});
+        this.renderer = new AngularGL.WebGLRenderer(this, params);
+        this.renderLoop = (new function(scene) {
+            this.id = null;
+            var animate = (function() {
+                this.id = requestAnimationFrame(animate.bind(this));
+                this.step();
+            }.bind(this));
+            this.start = function() {
+                if(!this.id) {
+                    _.invoke(scene.animations, "prepare");
+                    animate();
+                }
+            };
+            this.stop = function() {
+                cancelAnimationFrame(this.id);
+                this.id = null;
+            };
+            this.step = function() {
+                //Invoke all animation steps
+                _.invoke(scene.animations, "step");
+                //Render
+                scene.renderer.render();
+                if(this.id && scene.controls) {
+                    scene.controls.update();
+                }
+                //TODO: consider removing
+                if(!scene.scope.$$phase) {
+                    scene.scope.$digest();
+                }
+            };
+            this.toggle = function(p) {
+                this.id && this.stop() || p && this.start();
+            };
+            this.reset = function() {
+                this.prepareFn();
+                if(!this.id) {
+                    scene.render();
+                }
+            };
+        }(this));
         window.addEventListener("keydown", function(event) {
             if(event.keyCode === "C".charCodeAt(0)) {
                 this.cameras.push(this.camera);
@@ -53,68 +96,39 @@ var AngularGL = {
             }
         }.bind(this));
         //Destroy scene on route change
-        this.scope.$on("$routeChangeStart", function(e, routeTo, routeFrom) {
-            /*console.log(this.renderer.info.memory);
-            //Cancel render loop and animations
-            while(this.animations.length) {
-                var animation = this.animations.pop();
-                animation.stop();
-                animation = null;
-            }
-            //Remove objects from the scene
-            AngularGL.removeChildren(this);
-            //Remove cameras
-            while(this.cameras.length) {
-                var camera = this.cameras.pop();
-                camera = null;
-            }
-            //Remove scope
-            delete this.scope;
-            console.log(this.renderer.info.memory);
-            e.preventDefault();*/
-            /*e.preventDefault();
-            console.log(routeTo);
-            AngularGL.location.path(routeTo.$$route.originalPath, true);*/
-            //routeTo.reload();
+        this.scope.$on("$routeChangeStart", function() {
+            angular.element(this.renderer.domElement).remove();
         }.bind(this));
     },
-    Animation: function(scene, animateFn, prepareFn) {
-        this.id;
-        this.animateFn = animateFn || function() {};
-        this.prepareFn = prepareFn || function() {};
-        this.complete;
-        this.scene = scene;
-        this.scene.animations.push(this);
-        this.animate = function() {
-            this.id = requestAnimationFrame(this.animate.bind(this));
-            this.step();
+    Animation: function(scene, step, reset) {
+        //TODO: is complete even necessary?
+        this.complete = true;
+        this.running = false;
+        this.step = function() {
+            if(this.running) {
+                this.stepOnce();
+            }
+        };
+        this.stepOnce = function() {
+            this.complete = false;
+            (step || function() {}).call(this);
+        };
+        this.prepare = function() {
+            if(this.complete) {
+                this.reset();
+            }
         };
         this.start = function() {
-            if(!this.id) {
-                if(this.complete) {
-                    this.prepareFn();
-                    this.complete = false;
-                }
-                this.animate();
-            }
-        };
-        this.step = function() {
-            this.animateFn();
-            this.scene.render();
+            this.running = true;
         };
         this.stop = function() {
-            cancelAnimationFrame(this.id);
-            this.id = null;
+            this.running = false;
         };
         this.toggle = function(p) {
-            this.id && this.stop() || p && this.start();
+            this.running = p;
         };
-        this.reset = function() {
-            this.prepareFn();
-            if(!this.id) {
-                this.scene.render();
-            }
-        }
+        this.reset = reset || function() {};
+        scene.animations.push(this);
     },
     Mesh: function() {
         THREE.Mesh.apply(this, arguments);
@@ -149,6 +163,10 @@ var AngularGL = {
         this.film.castShadow = false;
         this.film.position.z += 5;
         this.add(this.film);
+        //TODO: handle scene with multiple mirrors
+        (new AngularGL.Animation(scene, function() {
+            this.render();
+        }.bind(this))).start();
     },
 };
 //Defaults
@@ -171,8 +189,6 @@ for(var prop in THREE) {
 AngularGL.MeshFaceMaterial.prototype.dispose = function() {
     while(this.materials.length) {
         var material = this.materials.pop();
-        //if(material instanceof THREE.MirrorMaterial)
-        //console.log(material);
         material.dispose();
     }
 };
@@ -199,22 +215,16 @@ AngularGL.Scene.prototype.addObject = function(obj) {
     THREE.Scene.prototype.add.call(this, obj);
 };
 AngularGL.Scene.prototype.render = function() {
-    (this.renders || function() {})();
-    this.renderer.render(this, this.camera);
-    if(this.loop.running && this.controls) {
-        this.controls.update();
-    }
-    if(this.scope && !this.scope.$$phase) {
-        this.scope.$digest();
-    }
+    this.renderLoop.step();
 };
 AngularGL.Scene.prototype.run = function(renders) {
-    if(!(this.camera && this.camera instanceof THREE.Camera)) {
+    /*if(!(this.camera && this.camera instanceof THREE.Camera)) {
         console.error("At least one Camera object is required to render scene");
         return;
     }
     this.renders = renders;
-    this.loop.start();
+    this.loop.start();*/
+    this.renderLoop.start();
 };
 Object.defineProperties(AngularGL.Scene.prototype, {
     camera: {
@@ -243,13 +253,6 @@ Object.defineProperties(AngularGL.Scene.prototype, {
         get: function() {
             var ctx = this.renderer.getContext();
             return ctx.canvas.clientHeight;
-        }
-    }
-});
-Object.defineProperties(AngularGL.Animation.prototype, {
-    running: {
-        get: function() {
-            return !!this.id;
         }
     }
 });
@@ -300,12 +303,19 @@ AngularGL.Circle = function(parameters) {
 AngularGL.Circle.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Circle.prototype.constructor = AngularGL.Circle;
 AngularGL.Ring = function(parameters) {
+    var thetaSegments, phiSegments;
+    var segments = parameters.segments || [8, 8];
+    if(_.isArray(segments)) {
+        thetaSegments = segments[0];
+        phiSegments = segments[1];
+    } else {
+        thetaSegments = phiSegments = segments;
+    }
     var innerRadius = parameters.innerRadius || 1;
     var outerRadius = parameters.outerRadius || 10;
-    var segments = parameters.segments || 1;
     var start = parameters.start || 0;
     var length = parameters.length || Math.PI * 2;
-    var geometry = new AngularGL.RingGeometry(innerRadius, outerRadius, segments, segments, start, length);
+    var geometry = new AngularGL.RingGeometry(innerRadius, outerRadius, thetaSegments, phiSegments, start, length);
     var material = new AngularGL.MeshPhongMaterial(parameters);
     AngularGL.Mesh.call(this, geometry, material);
 };
