@@ -13,7 +13,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         domElementId: "canvas",
         scope: $scope,
         alpha: false,
-        controls: true
+        controls: false
     });
 
     //Axis Helper
