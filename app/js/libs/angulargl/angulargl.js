@@ -19,7 +19,7 @@ var AngularGL = {
         //this.scene = scene;
         this.shadowMapEnabled = true;
         this.shadowMapType = AngularGL.PCFSoftShadowMap;
-        this.setSize(canvas.clientWidth, canvas.clientHeight);
+        this.setSize(canvas.width || canvas.clientWith, canvas.height || canvas.clientHeight);
         this.gammaInput = true;
         this.gammaOutput = true;
         //Methods
@@ -204,7 +204,7 @@ AngularGL.Scene.prototype.add = function() {
 AngularGL.Scene.prototype.addObject = function(obj) {
     if(obj instanceof THREE.Camera) {
         var canvas = this.renderer.domElement;
-        obj.aspect = canvas.clientWidth/canvas.clientHeight;
+        obj.aspect = this.width/this.height;
         obj.updateProjectionMatrix();
         if(!this.camera) { //Don't allow overriding camera
             this.camera = obj;
@@ -245,14 +245,14 @@ Object.defineProperties(AngularGL.Scene.prototype, {
     },
     width: {
         get: function() {
-            var ctx = this.renderer.getContext();
-            return ctx.canvas.clientWidth;
+            var canvas = this.renderer.getContext().canvas;
+            return canvas.width || canvas.clientWidth;
         }
     },
     height: {
         get: function() {
-            var ctx = this.renderer.getContext();
-            return ctx.canvas.clientHeight;
+            var canvas = this.renderer.getContext().canvas;
+            return canvas.height || canvas.clientHeight;
         }
     }
 });
@@ -370,17 +370,6 @@ AngularGL.DEFAULT_MATERIAL_PARAMETERS = {
 };
 AngularGL.EPSILON = 1e-1;
 //New static methods
-AngularGL.removeChildren = function(parent) {
-    while(parent.children.length) {
-        var object = parent.children[0];
-        AngularGL.removeChildren(object);
-        parent.remove(object);
-        if(object instanceof THREE.Mesh) {
-            object.geometry.dispose();
-            object.material.dispose();
-        }
-    }
-};
 AngularGL.load = function(resource) {
     return this.http.get("js/libs/angulargl/" + resource);
 };

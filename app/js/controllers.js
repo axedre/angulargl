@@ -116,7 +116,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Run scene
     scene.run();
-    
+
     //Animation
     var animation = new AngularGL.Animation(scene, function() {
         if(cube.position.x > -20) {
@@ -136,7 +136,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     });
 
     //TODO: figure out wht to do with these
-    
+
     //Toggle animation
     //$scope.play = true;
     $scope.$watch("play", function(p) {
@@ -158,7 +158,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 }])
 .controller("DiffractionCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
     //Scene
-    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope, alpha: false});
+    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope});
 
     //Grid Helper
     var gridHelper = new AngularGL.GridHelper(10000, 100);
@@ -166,7 +166,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Axis Helper
     var axisHelper = new AngularGL.AxisHelper(15000);
-    scene.add(axisHelper);
+    //scene.add(axisHelper);
 
     //CD
     var cdFront, cdInner, cdBack;
@@ -246,7 +246,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     var light = new AngularGL.PointLight(0x404040, 0.5);
     light.position.set(0, 0, 300);
     scene.add(light);
-    
+
     //Sun
     //scene.add(new AngularGL.Sun());
 
@@ -265,7 +265,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     $scope.d = 2.0;
     $scope.r = 0.5;
     $scope.C = 4.0;
-    
+
     //Reset scene
     function resetScene() {
         _.each(cd, function(part) {
@@ -278,7 +278,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Run scene
     scene.run();
-    
+
     //Animation
     var animation = new AngularGL.Animation(scene, function() {
         _.each(cd, function(part, i) {
@@ -295,6 +295,59 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 
     //Right controls
     $scope.reset = animation.reset.bind(animation);
-    $scope.step = animation.step.bind(animation);
+    $scope.step = animation.stepOnce.bind(animation);
 
+}])
+.controller("ThreeJsExample", [function($scope) {
+    var scene, camera, renderer, geometry, material, cube;
+    function init() {
+        var canvas = document.getElementById("canvas");
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(45, canvas.width/canvas.height, 0.1, 1000);
+        camera.position.z = 8;
+        renderer = new THREE.WebGLRenderer({canvas: canvas});
+        renderer.setSize(canvas.width, canvas.height);
+        geometry = new THREE.BoxGeometry(1, 1, 1);
+        material = new THREE.MeshFaceMaterial([
+            new THREE.MeshBasicMaterial({color: 0xff00ff}),
+            new THREE.MeshBasicMaterial({color: 0x0000ff}),
+            new THREE.MeshBasicMaterial({color: 0x00ff00}),
+            new THREE.MeshBasicMaterial({color: 0xff7f7f}),
+            new THREE.MeshBasicMaterial({color: 0xff0000}),
+            new THREE.MeshBasicMaterial({color: 0xffff00})
+        ]);
+        cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+    }
+    function render() {
+        requestAnimationFrame(render);
+        cube.rotation.x += 0.1;
+        cube.rotation.y += 0.1;
+        cube.rotation.z += 0.1;
+        renderer.render(scene, camera);
+    };
+    init(); //Initialize program
+    render(); //Begin rendering
+}])
+.controller("AngularGLExample", ["$scope", "AngularGL", function($scope, AngularGL) {
+    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope});
+    var camera = new AngularGL.PerspectiveCamera(45, 1, 0.1, 100000);
+    camera.position.z = 8;
+    scene.add(camera);
+    var cube = new AngularGL.Cube({xyz: 1});
+    cube.material = new AngularGL.MeshFaceMaterial([
+        new AngularGL.MeshBasicMaterial({color: 0xff00ff}),
+        new AngularGL.MeshBasicMaterial({color: 0x0000ff}),
+        new AngularGL.MeshBasicMaterial({color: 0x00ff00}),
+        new AngularGL.MeshBasicMaterial({color: 0xff7f7f}),
+        new AngularGL.MeshBasicMaterial({color: 0xff0000}),
+        new AngularGL.MeshBasicMaterial({color: 0xffff00})
+    ]);
+    scene.add(cube);
+    $scope.animation = new AngularGL.Animation(scene, function() {
+        cube.rotation.x += 0.1;
+        cube.rotation.y += 0.1;
+        cube.rotation.z += 0.1;
+    }).start();
+    scene.run();
 }]);
