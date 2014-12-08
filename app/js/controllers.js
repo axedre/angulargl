@@ -13,7 +13,8 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         domElementId: "canvas",
         scope: $scope,
         alpha: false,
-        controls: false
+        controls: true,
+        benchmark: true
     });
 
     //Axis Helper
@@ -37,22 +38,9 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         color: wallColor,
         shininess: 50,
         ambient: 0x444444,
-        reflectivity: [0, 0, 0, 0, 1, 0] //TODO
+        reflectivity: [false, false, false, false, true, false],
+        scene: scene
     });
-    var wallMirror = new AngularGL.Mirror(scene, {
-        width: 100,
-        height: 100,
-        color: wallColor
-    });
-    wall.material = new AngularGL.MeshFaceMaterial([
-        new AngularGL.MeshPhongMaterial({color: wallColor, side: AngularGL.FrontSide}),
-        new AngularGL.MeshPhongMaterial({color: wallColor, side: AngularGL.FrontSide}),
-        new AngularGL.MeshPhongMaterial({color: wallColor, side: AngularGL.FrontSide}),
-        new AngularGL.MeshPhongMaterial({color: wallColor, side: AngularGL.FrontSide}),
-        wallMirror.material,
-        new AngularGL.MeshPhongMaterial({color: wallColor, side: AngularGL.FrontSide})
-    ]);
-    wall.add(wallMirror);
     wall.position.set(0, 50, -15);
     wall.rotation.y += Math.PI / 12; //30° w.r.t. the approaching cube
     scene.add(wall);
@@ -132,7 +120,12 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
     //Reflectivity slider
     $scope.r = 0.5;
     $scope.$watch("r", function(r) {
-        wallMirror.reflectivity = r;
+        wall.children[0].reflectivity = r;
+    });
+    //Camera elevation slider
+    $scope.cameraY = 20;
+    $scope.$watch("cameraY", function(cameraY) {
+        camera01.position.y = cameraY;
     });
 
     //TODO: figure out wht to do with these
@@ -158,7 +151,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 }])
 .controller("DiffractionCtrl", ["$scope", "AngularGL", function($scope, AngularGL) {
     //Scene
-    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope});
+    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope, benchmark: true});
 
     //Grid Helper
     var gridHelper = new AngularGL.GridHelper(10000, 100);
@@ -301,6 +294,7 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
 .controller("ThreeJsExample", [function($scope) {
     var scene, camera, renderer, geometry, material, cube;
     function init() {
+        var tic = new Date();
         var canvas = document.getElementById("canvas");
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(45, canvas.width/canvas.height, 0.1, 1000);
@@ -318,19 +312,37 @@ angular.module("AngularGLApp.controllers", ["AngularGL"])
         ]);
         cube = new THREE.Mesh(geometry, material);
         scene.add(cube);
+        benchmark_results.startupTime = new Date() - tic;
     }
+    var benchmark_results = {
+        renderTimes: [],
+        avgRenderTime: 0
+    };
+    var stepCounter = 0;
     function render() {
         requestAnimationFrame(render);
+        var tic = new Date();
         cube.rotation.x += 0.1;
         cube.rotation.y += 0.1;
         cube.rotation.z += 0.1;
         renderer.render(scene, camera);
+        if(stepCounter < 1000) {
+            benchmark_results.renderTimes[stepCounter] = new Date() - tic;
+        } else if(stepCounter === 1000) {
+            for(var i=0; i<benchmark_results.renderTimes.length; i++) {
+                benchmark_results.avgRenderTime += benchmark_results.renderTimes[i];
+            }
+            benchmark_results.avgRenderTime /= benchmark_results.renderTimes.length;
+            benchmark_results.footprint = window.performance && window.performance.memory? window.performance.memory : "unsupported";
+            console.log(benchmark_results);
+        }
+        stepCounter++;
     };
     init(); //Initialize program
     render(); //Begin rendering
 }])
 .controller("AngularGLExample", ["$scope", "AngularGL", function($scope, AngularGL) {
-    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope});
+    var scene = new AngularGL.Scene({domElementId: "canvas", scope: $scope, benchmark: true});
     var camera = new AngularGL.PerspectiveCamera(45, 1, 0.1, 100000);
     camera.position.z = 8;
     scene.add(camera);

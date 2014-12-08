@@ -191,18 +191,37 @@
         }
         lastTime = timeNow;
     }
+    var benchmark_results = {
+        renderTimes: [],
+        avgRenderTime: 0
+    };
+    var stepCounter = 0;
     function tick() {
         requestAnimFrame(tick);
+        var tic = new Date();
         drawScene();
         animate();
+        if(stepCounter < 1000) {
+            benchmark_results.renderTimes[stepCounter] = new Date() - tic;
+        } else if(stepCounter === 1000) {
+            for(var i=0; i<benchmark_results.renderTimes.length; i++) {
+                benchmark_results.avgRenderTime += benchmark_results.renderTimes[i];
+            }
+            benchmark_results.avgRenderTime /= benchmark_results.renderTimes.length;
+            benchmark_results.footprint = window.performance && window.performance.memory? window.performance.memory : "unsupported";
+            console.log(benchmark_results);
+        }
+        stepCounter++;
     }
     function webGLStart() {
         var canvas = document.getElementById("canvas");
+        var tic = new Date();
         initGL(canvas);
         initShaders()
         initBuffers();
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
+        benchmark_results.startupTime = new Date() - tic;
         tick();
     }
     webGLStart();

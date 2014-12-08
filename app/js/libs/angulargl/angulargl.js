@@ -49,12 +49,22 @@ var AngularGL = {
         this.animations = [];
         this.scope = params.scope;
         this.controls = typeof params.controls !== "undefined"? params.controls : true;
+        this.benchmark = params.benchmark;
         this.renderer = new AngularGL.WebGLRenderer(this, params);
+        this.stepCounter = -1;
         this.renderLoop = (new function(scene) {
             this.id = null;
             var animate = (function() {
                 this.id = requestAnimationFrame(animate.bind(this));
+                var tic = new Date();
                 this.step();
+                if(scene.benchmark) {
+                    var time = new Date() - tic;
+                    if(!scene.stepCounter) {
+                        scene.benchmark_results.startupTime = time;
+                    }
+                    scene.benchmark_results.renderTimes[scene.stepCounter % 1000] = time;
+                }
             }.bind(this));
             this.start = function() {
                 if(!this.id) {
@@ -67,6 +77,7 @@ var AngularGL = {
                 this.id = null;
             };
             this.step = function() {
+                scene.stepCounter++;
                 //Invoke all animation steps
                 _.invoke(scene.animations, "step");
                 //Render
@@ -77,6 +88,9 @@ var AngularGL = {
                 //TODO: consider removing
                 if(!scene.scope.$$phase) {
                     scene.scope.$digest();
+                }
+                if(scene.stepCounter === 1000) {
+                    scene.reportBenchmark();
                 }
             };
             this.toggle = function(p) {
@@ -89,12 +103,46 @@ var AngularGL = {
                 }
             };
         }(this));
+        this.reportBenchmark = function(canvas, div) {
+            this.benchmark = false;
+            this.benchmark_results.avgRenderTime = _.reduce(this.benchmark_results.renderTimes, function(S, time) {
+                return S + time;
+            }, 0) / this.benchmark_results.renderTimes.length;
+            //delete this.benchmark_results.renderTimes;
+            this.benchmark_results.footprint = window.performance && window.performance.memory? window.performance.memory : "unsupported";
+            console.info(this.benchmark_results);
+            if(canvas && div) {
+                canvas.parentNode.removeChild(div);
+            }
+        };
         window.addEventListener("keydown", function(event) {
             if(event.keyCode === "C".charCodeAt(0)) {
                 this.cameras.push(this.camera);
                 this.camera = this.cameras.shift();
             }
         }.bind(this));
+        //Activate benchmarking if needed
+        if(this.benchmark) {
+            this.benchmark_results = {
+                startupTime: 0,
+                avgRenderTime: null,
+                renderTimes: [],
+                footprint: null
+            };
+            var canvas = document.getElementById(params.domElementId);
+            var div = document.createElement("div");
+            div.classList.add("well", "bg-info", "text-right");
+            var button = document.createElement("button");
+            button.classList.add("btn", "btn-warning");
+            button.addEventListener("click", this.reportBenchmark.bind(this, canvas, div));
+            button.innerText = "Stop";
+            var p = document.createElement("p");
+            p.classList.add("pull-left");
+            p.innerText = "Benchmarking in progress";
+            div.appendChild(p);
+            div.appendChild(button);
+            canvas.parentNode.insertBefore(div, canvas);
+        }
         //Destroy scene on route change
         this.scope.$on("$routeChangeStart", function() {
             angular.element(this.renderer.domElement).remove();
@@ -217,13 +265,11 @@ AngularGL.Scene.prototype.addObject = function(obj) {
 AngularGL.Scene.prototype.render = function() {
     this.renderLoop.step();
 };
-AngularGL.Scene.prototype.run = function(renders) {
-    /*if(!(this.camera && this.camera instanceof THREE.Camera)) {
+AngularGL.Scene.prototype.run = function() {
+    if(!(this.camera && this.camera instanceof THREE.Camera)) {
         console.error("At least one Camera object is required to render scene");
         return;
     }
-    this.renders = renders;
-    this.loop.start();*/
     this.renderLoop.start();
 };
 Object.defineProperties(AngularGL.Scene.prototype, {
@@ -325,10 +371,40 @@ AngularGL.Cube = function(parameters) {
     parameters = parameters || {};
     var xyz = parameters.xyz || 10;
     var sides = parameters.sides || [];
+    var width = sides[0] || xyz;
+    var height = sides[1] || xyz;
+    var depth = sides[2] || xyz;
     var segments = parameters.segments || 1;
-    var geometry = new AngularGL.BoxGeometry(sides[0] || xyz, sides[1] || xyz, sides[2] || xyz, segments, segments, segments);
-    var material = new AngularGL.MeshPhongMaterial(parameters);
+    var color = parameters.color || 0xffffff;
+    var scene = parameters.scene;
+    var geometry = new AngularGL.BoxGeometry(width, height, depth, segments, segments, segments);
+    var material;
+    var mirrors = [];
+    if(parameters.reflectivity && _.isArray(parameters.reflectivity)) {
+        var materialArray = [];
+        _.each(parameters.reflectivity, function(faceReflectivity) {
+            if(faceReflectivity) {
+                var mirror = new AngularGL.Mirror(scene, {
+                    width: width,
+                    height: height,
+                    color: color
+                });
+                mirrors.push(mirror);
+                materialArray.push(mirror.material);
+            } else {
+                materialArray.push(new AngularGL.MeshPhongMaterial({color: color, side: AngularGL.FrontSide}));
+            }
+        });
+        material = new AngularGL.MeshFaceMaterial(materialArray);
+    } else {
+        material = new AngularGL.MeshPhongMaterial(parameters);
+    }
     AngularGL.Mesh.call(this, geometry, material);
+    if(mirrors.length) {
+        _.each(mirrors, function(mirror) {
+            this.add(mirror);
+        }, this);
+    }
 };
 AngularGL.Cube.prototype = Object.create(AngularGL.Mesh.prototype);
 AngularGL.Cube.prototype.constructor = AngularGL.Cube;
